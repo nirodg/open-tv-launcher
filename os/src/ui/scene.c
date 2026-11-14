@@ -233,6 +233,7 @@ static void activate(void); /* below: click-activate uses it */
  *    right-click opens the item's options (prototype mouse support) ────── */
 static float last_input = -1;
 static float click_x, click_y;   /* last click position, for acts that need it */
+static float ptr_x = -1, ptr_y;  /* software cursor (drawn by scene_draw) */
 
 float scene_idle(void) { return last_input < 0 ? 0 : g_now - last_input; }
 void scene_click_pos(float *x, float *y) { *x = click_x; *y = click_y; }
@@ -253,6 +254,12 @@ void scene_pointer(int x, int y, bool down, bool right, float now)
 	g_now = now;
 	last_input = now;
 	sys_note_input();
+	/* software cursor: track every move, redraw on visible change */
+	if (ptr_x < 0 || x != (int)ptr_x || y != (int)ptr_y) {
+		ptr_x = x;
+		ptr_y = y;
+		g_dirty = true;
+	}
 	if (!strcmp(cur_id, "standby")) {
 		if (down)
 			scene_home(); /* any input wakes the TV */
@@ -631,6 +638,73 @@ void scene_focus_key(const char *key)
 		}
 }
 
+/* ── software cursor: a classic arrow with a dark outline, drawn on top of
+ *    every frame. The guest owns the pointer with a tablet device — QEMU
+ *    (and real hardware) show nothing unless we draw it. ────────────────── */
+static void poly_span(gw_surface *s, const float *px, const float *py, int n, Col c)
+{
+	float miny = 1e9f, maxy = -1e9f;
+	for (int i = 0; i < n; i++) {
+		if (py[i] < miny) miny = py[i];
+		if (py[i] > maxy) maxy = py[i];
+	}
+	for (int y = (int)miny; y <= (int)maxy; y++) {
+		float xs[12];
+		int nx = 0;
+		float yy = y + 0.5f;
+		for (int e = 0; e < n && nx < 12; e++) {
+			int e2 = (e + 1) % n;
+			float y1 = py[e], y2 = py[e2], x1 = px[e], x2 = px[e2];
+			if ((yy >= y1 && yy < y2) || (yy >= y2 && yy < y1)) {
+				float t = (yy - y1) / (y2 - y1);
+				xs[nx++] = x1 + t * (x2 - x1);
+			}
+		}
+		for (int i = 1; i < nx; i++) {
+			float v = xs[i];
+			int j = i - 1;
+			while (j >= 0 && xs[j] > v) {
+				xs[j + 1] = xs[j];
+				j--;
+			}
+			xs[j + 1] = v;
+		}
+		for (int i = 0; i + 1 < nx; i += 2) {
+			float w = xs[i + 1] - xs[i] + 1;
+			gfx_fill(s, rrect(xs[i], y, w, 1), c);
+		}
+	}
+}
+
+static void cursor_draw(gw_surface *s)
+{
+	if (ptr_x < 0)
+		return;
+	/* classic arrow, ×1.5 for 1080p (≈ 28 px tall) */
+	const float P[7][2] = {
+		{ 0, 0 }, { 0, 16.5f }, { 3.7f, 13 }, { 6.5f, 19.4f },
+		{ 8.9f, 18.4f }, { 6.1f, 12.7f }, { 12.3f, 12.7f },
+	};
+	float px[7], py[7];
+	for (int i = 0; i < 7; i++) {
+		px[i] = ptr_x + P[i][0] * 1.5f;
+		py[i] = ptr_y + P[i][1] * 1.5f;
+	}
+	Col dk = { 5, 7, 13, 215 };
+	for (int dx = -2; dx <= 2; dx += 2)
+		for (int dy = -2; dy <= 2; dy += 2) {
+			if (!dx && !dy)
+				continue;
+			float qx[7], qy[7];
+			for (int i = 0; i < 7; i++) {
+				qx[i] = px[i] + dx;
+				qy[i] = py[i] + dy;
+			}
+			poly_span(s, qx, qy, 7, dk);
+		}
+	poly_span(s, px, py, 7, C_TEXT);
+}
+
 void scene_draw(gw_surface *s, float now)
 {
 	draw_wallpaper(s);
@@ -663,4 +737,5 @@ void scene_draw(gw_surface *s, float now)
 	if (hud_on_now())
 		draw_hud(s, now);
 	scene_effects(s);
+	cursor_draw(s); /* the pointer is ours to draw (tablet devices) */
 }

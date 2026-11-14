@@ -32,8 +32,10 @@ Keys (host keyboard emulates the remote): ↑↓←→ navigate · Enter = OK (h
 
 **Mouse works too** (both run targets attach a virtio-tablet): in the interactive
 window just move and click — hover moves focus, click activates, right-click
-opens the item's options. Headless, drive it with `os/tools/mouse.py` over the
-QMP socket (`mouse.py os/build/qmp-x86.sock click 300 480`); HMP `mouse_move`
+opens the item's options, and the UI draws a software cursor (the guest owns
+the pointer with a tablet device, so nothing shows unless we draw it).
+Headless, drive it with `os/tools/mouse.py` over the QMP socket
+(`mouse.py os/build/qmp-x86.sock click 300 480`); HMP `mouse_move`
 does not deliver to the tablet under `-display none`, QMP `input-send-event`
 does.
 

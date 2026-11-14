@@ -89,6 +89,11 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   stale QEMU instance + a paused player's static frame). GOTCHA: vid_clips(NULL) crashed the Folders tab
   (NULL out-param). All flows verified with the mouse on both guests (x86 + ARM) — zero respawns.
 - Pending: real media backend (task 16), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
+- 2026-11-14 (visible cursor): the UI now draws a software cursor — a classic white arrow (×1.5 for 1080p,
+  ≈28 px) with a dark outline, scanline-polygon-rasterized in scene.c (poly_span), tracked in scene_pointer
+  (dirty on move) and drawn LAST in scene_draw (over effects, toast, everything). With a virtio-tablet the
+  guest owns the pointer — QEMU/real hardware show nothing unless the guest draws it. Verified on the x86
+  guest with mouse.py + zoomed screenshot (screenshots/20261114-200119_x86-cursor.png).
 - 2026-11-14 (Video app + app liveness + .app list): the Video app is a real screen now — home (Continue watching shelf +
   All videos grid from the device.conf storage dirs; real file scan: name/size/mtime + .dur sidecar) and a player
   (filmstrip "playback": 12 fps pre-rendered strip via stb_image [vendored, JPEG enabled], progress, OK pause, ◀ ▶ seek,
