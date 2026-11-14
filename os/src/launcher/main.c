@@ -228,8 +228,13 @@ int main(void)
 		host_tick((int)((now - last) * 1000.0f + 0.5f));
 		last = now;
 		int n = gw_input_poll(ev, 8, 16);
-		for (int i = 0; i < n; i++)
-			scene_key(ev[i].key, ev[i].down, now_sec());
+		for (int i = 0; i < n; i++) {
+			if (ev[i].pointer)
+				scene_pointer(ev[i].x, ev[i].y, ev[i].down,
+					      ev[i].right, now_sec());
+			else
+				scene_key(ev[i].key, ev[i].down, now_sec());
+		}
 		now = now_sec();
 		scene_tick(now);
 		float next_wake;

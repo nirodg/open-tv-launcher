@@ -589,6 +589,14 @@ static void act_options(void)
 		app_menu(id);
 		return;
 	}
+	if (eq(kind, "vmenu")) { /* a video card (hold OK / right-click) */
+		video_act("vmenu", id);
+		return;
+	}
+	if (eq(kind, "vsmenu")) { /* a network share */
+		video_act("vsmenu", id);
+		return;
+	}
 	toast("No options here", "info");
 }
 
@@ -609,9 +617,8 @@ void act_fire(const char *act)
 	}
 
 	if (eq(cmd, "open")) { open_app(arg); return; }
-	if (eq(cmd, "vopen")) { video_open_clip(atoi(arg)); return; }
-	if (eq(cmd, "vplay")) { video_toggle_play(); return; }
-	if (eq(cmd, "vseek")) { video_seek(atoi(arg)); return; }
+	if (video_act(cmd, arg))
+		return; /* the Video app's own acts (tabs, play, pickers, …) */
 	if (eq(cmd, "go")) {
 		if (eq(arg, "apps") || eq(arg, "settings")) {
 			scene_go(arg, "");

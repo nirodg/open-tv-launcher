@@ -70,6 +70,7 @@ app-x86:
 # socket; use `make shot-<t>` for screenshots and os/tools/shot.py for scripted keys.
 run-arm:
 	qemu-system-aarch64 -M virt -cpu cortex-a53 -smp 2 -m 1G \
+		-device virtio-tablet-pci \
 		-kernel $(IMAGES_ARM)/Image \
 		-append 'console=ttyAMA0 root=/dev/vda rw quiet' \
 		-drive file=$(IMAGES_ARM)/rootfs.ext4,if=virtio,format=raw \
@@ -82,6 +83,7 @@ run-arm:
 
 run-arm-headless:
 	qemu-system-aarch64 -M virt -cpu cortex-a53 -smp 2 -m 1G \
+		-device virtio-tablet-pci \
 		-kernel $(IMAGES_ARM)/Image \
 		-append 'console=ttyAMA0 root=/dev/vda rw quiet' \
 		-drive file=$(IMAGES_ARM)/rootfs.ext4,if=virtio,format=raw \
@@ -92,10 +94,12 @@ run-arm-headless:
 		-netdev user,id=n0 -device virtio-net-pci,netdev=n0 \
 		-display none \
 		-serial file:$(BUILD)/boot-arm.log \
+		-qmp unix:$(BUILD)/qmp-arm.sock,server,nowait \
 		-monitor unix:$(BUILD)/mon-arm.sock,server,nowait
 
 run-x86:
 	qemu-system-x86_64 -M q35 -enable-kvm -cpu host -smp 4 -m 2G -vga none \
+		-device virtio-tablet-pci \
 		-kernel $(IMAGES_X86)/bzImage \
 		-append 'console=ttyS0 root=/dev/vda rw quiet' \
 		-drive file=$(IMAGES_X86)/rootfs.ext2,if=virtio,format=raw \
@@ -108,6 +112,7 @@ run-x86:
 
 run-x86-headless:
 	qemu-system-x86_64 -M q35 -enable-kvm -cpu host -smp 4 -m 2G -vga none \
+		-device virtio-tablet-pci \
 		-kernel $(IMAGES_X86)/bzImage \
 		-append 'console=ttyS0 root=/dev/vda rw quiet' \
 		-drive file=$(IMAGES_X86)/rootfs.ext2,if=virtio,format=raw \
@@ -118,6 +123,7 @@ run-x86-headless:
 		-netdev user,id=n0 -device virtio-net-pci,netdev=n0 \
 		-display none \
 		-serial file:$(BUILD)/boot-x86.log \
+		-qmp unix:$(BUILD)/qmp-x86.sock,server,nowait \
 		-monitor unix:$(BUILD)/mon-x86.sock,server,nowait
 
 # ── screenshots (via QEMU monitor screendump; PPM→PNG with PIL) ──────────

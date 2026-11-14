@@ -26,7 +26,7 @@ gw_surface *gw_display_fb(void);         /* surface to draw into (back buffer) *
 void gw_display_present(void);           /* scanout */
 void gw_display_damage(int x, int y, int w, int h); /* hint, may be ignored */
 
-/* ── Input (evdev → the remote-key model) ────────────────────────────── */
+/* ── Input (evdev → the remote-key model; pointer for mouse/touch) ────── */
 typedef enum {
 	GWK_NONE = 0,
 	GWK_UP, GWK_DOWN, GWK_LEFT, GWK_RIGHT,
@@ -35,12 +35,23 @@ typedef enum {
 	GWK_CHUP, GWK_CHDOWN,
 } gw_key;
 
-typedef struct { gw_key key; bool down; } gw_input_event;
+typedef struct {
+	gw_key key;
+	bool down;
+	/* pointer event (mouse/touch): key is GWK_NONE. Move = !down (hover),
+	 * click = down && !right, right-click = down && right (options). */
+	bool pointer;
+	bool right;
+	int x, y;             /* 0..screen */
+} gw_input_event;
 
 int  gw_input_open(void);
 void gw_input_close(void);
 /* Waits up to timeout_ms; returns number of events stored (0 = timeout). */
 int  gw_input_poll(gw_input_event *ev, int max, int timeout_ms);
+/* Pointer helper for the engine: focus/click hit-testing uses the screen
+ * size the display reported (defaults 1920×1080 on the host dev loop). */
+void gw_input_screen_size(int *w, int *h);
 
 /* ── Clock (monotonic, process-relative) ─────────────────────────────── */
 float gw_now(void);                  /* seconds since process start */

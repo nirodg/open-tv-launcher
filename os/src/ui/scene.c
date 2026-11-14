@@ -223,10 +223,63 @@ void lrestore(Layer *L, const char *key)
 		focus_apply(L, idx);
 }
 
-FNode *scene_focused(void)
-{
+FNode *scene_focused(void){
 	Layer *L = scene_top();
 	return L && L->focus >= 0 ? &L->n[L->focus] : NULL;
+}
+static void activate(void); /* below: click-activate uses it */
+
+/* ── pointer (mouse/touch): hover moves focus, click activates,
+ *    right-click opens the item's options (prototype mouse support) ────── */
+static float last_input = -1;
+static float click_x, click_y;   /* last click position, for acts that need it */
+
+float scene_idle(void) { return last_input < 0 ? 0 : g_now - last_input; }
+void scene_click_pos(float *x, float *y) { *x = click_x; *y = click_y; }
+
+static int node_at(Layer *L, int x, int y)
+{
+	for (int i = L->ncnt - 1; i >= 0; i--) {
+		R r = L->n[i].r;
+		r.y -= L->scroll_y;
+		if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
+			return i;
+	}
+	return -1;
+}
+
+void scene_pointer(int x, int y, bool down, bool right, float now)
+{
+	g_now = now;
+	last_input = now;
+	sys_note_input();
+	if (!strcmp(cur_id, "standby")) {
+		if (down)
+			scene_home(); /* any input wakes the TV */
+		return;
+	}
+	if (!strcmp(cur_id, "boot"))
+		return;
+	Layer *L = scene_top();
+	if (!L)
+		return;
+	int hit = node_at(L, x, y);
+	if (hit < 0)
+		return; /* hover off items keeps the current focus (prototype) */
+	if (L->focus != hit)
+		focus_apply(L, hit);
+	if (!down)
+		return; /* hover */
+	click_x = x;
+	click_y = y;
+	if (right) {
+		/* same as holding OK on the remote */
+		FNode *f = &L->n[hit];
+		if (!f->dis)
+			act_fire("options");
+		return;
+	}
+	activate();
 }
 
 static void bump(void)
@@ -403,6 +456,7 @@ static void activate(void)
 void scene_key(gw_key k, bool down, float now)
 {
 	g_now = now;
+	last_input = now;
 	sys_note_input();
 	if (!strcmp(cur_id, "standby")) {
 		if (down)
@@ -411,6 +465,12 @@ void scene_key(gw_key k, bool down, float now)
 	}
 	if (!strcmp(cur_id, "boot"))
 		return;
+	/* per-screen key interception (the player seeks with ◀ ▶) */
+	{
+		const Screen *S = screen_by_id(cur_id);
+		if (S && S->key && S->key(k, down, now))
+			return;
+	}
 	if (k == GWK_OK) {
 		if (down) {
 			ok_down = true;

@@ -29,6 +29,9 @@ static SStr sstr[] = {
 	{ "dlLoc", "Internal" }, { "onUninstall", "Remove data" },
 	{ "photoSrc", "Built in" }, { "wall", "Default" },
 	{ "appsFilter", "All" }, { "profile", "A" },
+	/* video app state: prefs (prototype appPrefs.video) + sort */
+	{ "vidResume", "Ask" }, { "vidSubs", "Off" }, { "vidSkip", "30 seconds" },
+	{ "vidSort", "Newest" }, { "vidHw", "1" },
 	{ "speedDown", "" }, { "speedUp", "" }, { "speedPing", "" },
 };
 static SInt sint[] = {
@@ -1258,12 +1261,13 @@ void toast_change(const char *key)
  * app lists every .mp4 found there; a "<name>.dur" sidecar carries the
  * duration (our sample generator writes it), and a "<name>.jpg" filmstrip
  * carries pre-rendered preview frames for the player (QEMU has no video
- * decode yet — the real media backend replaces this later). */
+ * decode yet — the real media backend replaces this later). Network shares
+ * are the prototype's mock while network=mock. */
 static VidClip vids[24];
 static int nvids;
 static bool vids_init;
 
-static void vid_scan_dir(const char *dir)
+static void vid_scan_dir(const char *dir, const char *folder)
 {
 	DIR *d = opendir(dir);
 	if (!d)
@@ -1276,7 +1280,9 @@ static void vid_scan_dir(const char *dir)
 			continue;
 		VidClip *v = &vids[nvids];
 		memset(v, 0, sizeof *v);
+		snprintf(v->id, sizeof v->id, "c%d", nvids);
 		snprintf(v->path, sizeof v->path, "%s/%s", dir, n);
+		snprintf(v->folder, sizeof v->folder, "%s", folder);
 
 		/* title: filename without the extension, separators as spaces */
 		char base[96];
@@ -1316,9 +1322,132 @@ VidClip *vid_clips(int *n)
 {
 	if (!vids_init) {
 		vids_init = true;
-		vid_scan_dir(otv_device_str("storage", "internal", "/media/internal"));
-		vid_scan_dir(otv_device_str("storage", "external", "/media/external"));
+		nvids = 0;
+		vid_scan_dir(otv_device_str("storage", "internal", "/media/internal"),
+			     "Internal storage");
+		vid_scan_dir(otv_device_str("storage", "external", "/media/external"),
+			     "USB drive");
 	}
 	*n = nvids;
 	return vids;
+}
+
+void vid_rescan(void)
+{
+	vids_init = false;
+	nvids = 0;
+}
+
+/* ── network shares (prototype mock; real SMB/DLNA with the media backend) */
+typedef struct { const char *file, *scene; int dur; } VFile;
+typedef struct { const char *name; const VFile *files; int nf; } VDirDef;
+typedef struct {
+	VShare share;
+	const VDirDef *dirs;
+	int ndirs;
+	VidClip *items;      /* materialized lazily, pos/watched stateful */
+	int nitems;
+} VShareDef;
+
+static const VFile f_films[] = {
+	{ "Sunday Matinee.mkv", "cinema", 6100 },
+	{ "Coral Garden.mkv", "nature", 3000 },
+	{ "Street Band Live.mp4", "music", 3900 },
+};
+static const VFile f_home[] = {
+	{ "Holiday 2025.mp4", "nature", 1260 },
+	{ "Wedding speech.mp4", "kids", 540 },
+};
+static const VFile f_vids[] = {
+	{ "Drawing tutorial.mp4", "kids", 840 },
+	{ "Garden drone flight.mp4", "nature", 300 },
+};
+static const VDirDef d_nas[] = {
+	{ "Films", f_films, 3 }, { "Home videos", f_home, 2 },
+};
+static const VDirDef d_pc[] = {
+	{ "Videos", f_vids, 2 },
+};
+static VShareDef shares[] = {
+	{ { "nas", "Home NAS", "SMB", "smb://192.168.1.20/media" }, d_nas, 2, NULL, 0 },
+	{ { "pc", "Living room PC", "DLNA", "Media server on 192.168.1.31" }, d_pc, 1, NULL, 0 },
+};
+
+int vid_shares_count(void)
+{
+	return (int)(sizeof shares / sizeof *shares);
+}
+const VShare *vid_share(int i)
+{
+	return i >= 0 && i < vid_shares_count() ? &shares[i].share : NULL;
+}
+int vid_share_dirs(int i)
+{
+	return i >= 0 && i < vid_shares_count() ? shares[i].ndirs : 0;
+}
+const char *vid_share_dir_name(int i, int d)
+{
+	return (i >= 0 && i < vid_shares_count() && d >= 0 &&
+		d < shares[i].ndirs) ? shares[i].dirs[d].name : "";
+}
+
+VidClip *vid_share_clips(int i, int d, int *n)
+{
+	if (i < 0 || i >= vid_shares_count() || d < 0 || d >= shares[i].ndirs) {
+		*n = 0;
+		return NULL;
+	}
+	VShareDef *sh = &shares[i];
+	const VDirDef *dir = &sh->dirs[d];
+	if (!sh->items) {
+		/* materialize every directory once, keep positions across views */
+		int total = 0;
+		for (int k = 0; k < sh->ndirs; k++)
+			total += sh->dirs[k].nf;
+		sh->items = calloc(total ? total : 1, sizeof(VidClip));
+		sh->nitems = 0;
+		for (int k = 0; k < sh->ndirs; k++)
+			for (int f = 0; f < sh->dirs[k].nf; f++) {
+				const VFile *vf = &sh->dirs[k].files[f];
+				VidClip *v = &sh->items[sh->nitems++];
+				bool mkv = vf->file && strstr(vf->file, ".mkv");
+				snprintf(v->id, sizeof v->id, "n-%s-%d-%d",
+					 sh->share.id, k, f);
+				snprintf(v->path, sizeof v->path, "%s/%s/%s",
+					 sh->share.addr, sh->dirs[k].name, vf->file);
+				snprintf(v->title, sizeof v->title, "%.*s",
+					 (int)(strlen(vf->file) - 4), vf->file);
+				snprintf(v->folder, sizeof v->folder, "%s",
+					 sh->dirs[k].name);
+				snprintf(v->net, sizeof v->net, "%s", sh->share.name);
+				snprintf(v->res, sizeof v->res, "%s",
+					 mkv ? "3840 × 2160" : "1920 × 1080");
+				snprintf(v->codec, sizeof v->codec, "%s",
+					 mkv ? "H.265" : "H.264");
+				v->fps = 24;
+				v->dur = vf->dur;
+				v->size = (long)vf->dur * (mkv ? 9 : 5) * 1000 * 1000;
+				v->is_share = true;
+			}
+	}
+	*n = dir->nf;
+	return sh->items;
+}
+
+VidClip *vid_find(const char *id)
+{
+	int n;
+	(void)vid_clips(&n);
+	for (int i = 0; i < n; i++)
+		if (!strcmp(vids[i].id, id))
+			return &vids[i];
+	for (int s = 0; s < vid_shares_count(); s++)
+		for (int d = 0; d < vid_share_dirs(s); d++) {
+			int m;
+			VidClip *l = vid_share_clips(s, d, &m);
+			for (int i = 0; i < m; i++)
+				if (!strcmp(l[i].id, id))
+					return &l[i];
+		}
+	return NULL;
 }

@@ -139,10 +139,12 @@ typedef struct Screen {
 	const char *id;
 	void (*build)(Layer *L, const char *param);
 	void (*draw)(gw_surface *s, Layer *L, float now);
-	/* optional hooks: consume Back inside the screen (internal views) and
-	 * per-tick work (self-driven animations) */
+	/* optional hooks: consume Back inside the screen (internal views),
+	 * per-tick work (self-driven animations), and key interception
+	 * (return true when handled — e.g. the player's ◀ ▶ = seek) */
 	bool (*back)(void);
 	void (*tick)(float now);
+	bool (*key)(gw_key k, bool down, float now);
 } Screen;
 void screens_register(const Screen *const *list, int n); /* in main.c */
 const Screen *screen_by_id(const char *id);
@@ -157,6 +159,10 @@ void scene_go(const char *id, const char *param);
 void scene_back(void);void scene_home(void);
 void scene_refresh(void);
 void scene_mark_dirty(void); /* force the next frame to redraw */
+/* pointer (mouse/touch) input — hover-focus, click-activate, right-click = options */
+void scene_pointer(int x, int y, bool down, bool right, float now);
+float scene_idle(void);                 /* seconds since the last input */
+void scene_click_pos(float *x, float *y); /* position of the last click */
 Layer *scene_top(void);
 bool scene_in_layers(void);
 void scene_effects(gw_surface *s); /* backlight dim / night light / colour temp */

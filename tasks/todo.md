@@ -15,8 +15,11 @@
 - [x] Task 13: Device description file (`/etc/otv/device.conf`) + render-backend switch (kms-dumb default, kms-gles2 declared) + sample promo.mp4 in both storages
 - [x] Task 14: Video app, first slice: real screen (home + player), lists .mp4s from device.conf storage dirs, Continue watching positions, filmstrip playback (12 fps pre-rendered strip, no codec deps), OK play/pause, ◀ ▶ seek, Back. Real decode+audio = task 16.
 - [x] Task 14b: app liveness — implemented apps keep their colour icon (video, settings); not-implemented apps render gray-ish everywhere (home, pins, apps grid, Settings › Apps) and defer politely; every app is a ".app" entry in Settings › Apps (built-in + store, icon/size, app-info sub-page — Android-style)
+- [x] Task 14c: Video app 1:1 with the updated prototype (tabs, folders, network shares, prefs, resume dialog, hold-OK menu, info view, updated player: auto-hide, seek bar, subtitles/speed/zoom pills, up-next)
+- [x] Task 14d: pointer input end-to-end — virtio-tablet on both run targets, evdev ABS decoding, hover-focus / click-activate / right-click-options in the engine, clickable seek bar; os/tools/mouse.py drives it headless via QMP input-send-event (HMP mouse_move does NOT deliver under -display none)
 - [ ] Task 15: GPU render backend `kms-gles2` (GBM/EGL behind gw_display; QEMU: virtio-gpu venus/virgl + guest Mesa) — optional per device.conf
 - [ ] Task 16: real media backend: video decode + audio output for the Video app (gateway V4L2/ALSA interfaces; QEMU audio via `-audiodev`)
+- [ ] Task 17: on-screen keyboard (InputMethodService-equivalent) — unblocks play-a-link, add-network-share, rename, custom device name
 
 ## Checkpoints
 - [x] Phase 1: ARM target boots to shell

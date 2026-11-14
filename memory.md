@@ -73,7 +73,22 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   with a clear log line until the GBM/EGL backend lands). QEMU images ship sample clips at /media/internal/promo.mp4
   and /media/external/promo.mp4 (os/tools/make-samples.sh, deterministic ffmpeg testsrc2, 134 KB each) for the later
   Video app (task 14). Verified on both guests (device lines in boot log; x86 UI up in ~8 s).
-- Pending: Video app real impl (task 14), kms-gles2 GPU backend (task 15).
+- 2026-11-14 (Video app 1:1 + mouse): re-ported the Video app faithfully from the UPDATED prototype (APPT.video):
+  4 tabs (Videos/Folders/Network/Settings), folders from the real scan, the prototype's mock SMB/DLNA shares
+  (browse flow: connecting→loaded/error), per-app prefs (resume Ask/Always/Never, subs, skip, HW decode), resume
+  dialogs, hold-OK/right-click options menu (resume/watched/rename/delete — delete unlinks the real file),
+  info view, and the updated player: auto-hiding UI (5 s idle), clickable seek bar with knob, pause overlay,
+  subtitle/speed/zoom/audio pills, up-next card. Screen gained optional back()/tick()/key() hooks (settings
+  migrated to back(); the player consumes ◀ ▶ as seek and OK as pause — prototype vpPoke). Text-Entry-dependent
+  acts (play-a-link, add-share, rename) defer politely (keyboard = task 17).
+  MOUSE: pointer support end-to-end — virtio-tablet-pci on all run targets, evdev ABS+BTN decoding in
+  input_evdev (scales the tablet range to the screen), engine scene_pointer(): hover=focus, click=activate,
+  right-click=options, seek-bar clicks via scene_click_pos. Headless driving: os/tools/mouse.py over a QMP
+  socket (input-send-event with ABS in 0..32767 units — mouse.py scales pixels). GOTCHA: HMP mouse_move does
+  NOT deliver to the tablet under -display none (wasted a long debug session on it — the "frozen" app was a
+  stale QEMU instance + a paused player's static frame). GOTCHA: vid_clips(NULL) crashed the Folders tab
+  (NULL out-param). All flows verified with the mouse on both guests (x86 + ARM) — zero respawns.
+- Pending: real media backend (task 16), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
 - 2026-11-14 (Video app + app liveness + .app list): the Video app is a real screen now — home (Continue watching shelf +
   All videos grid from the device.conf storage dirs; real file scan: name/size/mtime + .dur sidecar) and a player
   (filmstrip "playback": 12 fps pre-rendered strip via stb_image [vendored, JPEG enabled], progress, OK pause, ◀ ▶ seek,

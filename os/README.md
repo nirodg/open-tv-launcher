@@ -24,11 +24,18 @@ Targets:
 
 ```sh
 make -C os run-arm        # interactive window (D-pad = arrows, OK = Enter, Back = Esc/Backspace)
-make -C os run-arm-headless   # no window: boot.log + monitor socket
+make -C os run-arm-headless   # no window: boot.log + monitor + QMP sockets
 make -C os shot-arm       # screenshot via QEMU screendump (needs headless run active)
 ```
 
 Keys (host keyboard emulates the remote): ↑↓←→ navigate · Enter = OK (hold 550 ms = options) · Esc/Backspace = Back · H = Home · M = Menu (quick panel) · +/− = volume · 0 = mute.
+
+**Mouse works too** (both run targets attach a virtio-tablet): in the interactive
+window just move and click — hover moves focus, click activates, right-click
+opens the item's options. Headless, drive it with `os/tools/mouse.py` over the
+QMP socket (`mouse.py os/build/qmp-x86.sock click 300 480`); HMP `mouse_move`
+does not deliver to the tablet under `-display none`, QMP `input-send-event`
+does.
 
 ## Verify
 
@@ -88,13 +95,24 @@ follow-up and replaces the filmstrip path. Regenerate everything with
 
 ## The Video app
 
-A real screen (task 14, first slice): opens from Home/the apps grid with its
-colour icon; lists every `.mp4` found in the device's storage dirs; Continue
-watching keeps positions while the app runs; the player shows the clip's
-filmstrip fullscreen with progress, back-10 / play-pause / fwd-30 (D-pad:
-OK toggles, ◀ ▶ seek, Back returns). Apps that are NOT implemented yet render
-gray-ish icons everywhere (home tiles, pins, apps grid, Settings › Apps) and
-still politely defer when opened — implemented apps keep their colour.
+A 1:1 port of the prototype's APPT.video (keep it that way for every future
+app — the prototype is the behaviour source of truth):
+
+- **Tabs**: Videos / Folders / Network / Settings (appBar tabs, VTABS).
+- **Videos**: Continue watching + All videos grid, sort chip, real files from
+  the device.conf storage dirs; hold OK (or right-click) a card for options
+  (resume, watched, rename, delete — delete removes the real file).
+- **Folders**: real folders from the scan; **Network**: the prototype's mock
+  shares (SMB/DLNA) while device.conf says network=mock — clicking one shows
+  the connecting → browse flow; **Settings**: resume/subtitles/skip prefs,
+  hardware-decoding toggle, clear watch history.
+- **Player** (videoView 1:1): auto-hiding UI (5 s), pause overlay, seek bar
+  with knob (click anywhere on it to seek), subtitles pill, speed ×, picture
+  size (Fit/Fill/Original), up-next card, back-10 / play / fwd-N / next.
+  D-pad: ◀ ▶ seek, OK pause, Back returns (position saved → Continue watching).
+- **Input**: D-pad AND mouse — hover moves focus, click activates, right-click
+  opens options, the seek bar is clickable. Apps that are NOT implemented yet
+  render gray-ish icons everywhere and still politely defer when opened.
 
 ## Fast UI iteration (host, no QEMU)
 

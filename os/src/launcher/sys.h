@@ -20,9 +20,34 @@ const char *net_desc(int i);      /* "Connected · Good signal" etc */
 const char *net_sub(int i);       /* "Open network · WPA2" style */
 
 /* ── video library (real files from the device's storage dirs) ─────────── */
-typedef struct { char path[256]; char title[96]; char date[24];
-		 long size; int dur; int pos; } VidClip;
-VidClip *vid_clips(int *n);       /* lazily scanned; do not mutate title/path */
+typedef struct {
+	char id[40];        /* "c<i>" local | "n-<share>-<d>-<f>" */
+	char path[256];     /* real path, or a share address */
+	char title[96];
+	char date[24];
+	char folder[48];    /* display folder (storage label or subfolder) */
+	char net[40];       /* share name, "" for local files */
+	char res[16];       /* "" = unknown until the media backend parses */
+	char codec[8];
+	int fps;
+	long size;          /* bytes */
+	int dur, pos;       /* seconds */
+	bool watched, live, is_share;
+} VidClip;
+VidClip *vid_clips(int *n);       /* local files, lazily scanned */
+VidClip *vid_find(const char *id);/* local + share items */
+void vid_rescan(void);            /* drop the scan (files changed) */
+
+/* network shares (mocked while device.conf says network=mock; real SMB/DLNA
+ * clients land with the media backend — the prototype ships these two) */
+typedef struct {
+	const char *id, *name, *proto, *addr;
+} VShare;
+int vid_shares_count(void);
+const VShare *vid_share(int i);
+int vid_share_dirs(int i);                    /* directories in the share */
+const char *vid_share_dir_name(int i, int d);
+VidClip *vid_share_clips(int i, int d, int *n); /* materialized, stateful */
 
 /* ── bluetooth mock ────────────────────────────────────────────────────── */
 typedef struct { const char *id, *name, *kind; int batt; bool conn; } BtDev;
