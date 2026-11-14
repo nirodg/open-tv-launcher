@@ -1,0 +1,10 @@
+#!/bin/sh
+# Mount the QEMU 9p host share (used for screenshots and quick binary iteration).
+mkdir -p /mnt/host
+i=0
+while [ $i -lt 10 ]; do
+	mount -t 9p -o trans=virtio,version=9p2000.L hostshare /mnt/host 2>/dev/null && break
+	i=$((i+1))
+	sleep 1
+done
+[ -d /mnt/host ] && echo "hostshare: available" || echo "hostshare: unavailable"

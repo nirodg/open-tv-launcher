@@ -1,0 +1,4 @@
+menu "Open TV OS"
+source "$BR2_EXTERNAL_OTV_PATH/package/otv-gateway/Config.in"
+source "$BR2_EXTERNAL_OTV_PATH/package/otv-launcher/Config.in"
+endmenu
