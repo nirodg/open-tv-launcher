@@ -11,13 +11,13 @@
 - [x] Task 9: Settings (sidebar, tog/opt/sld/act/info rows, picker) + toast + quick panel + dialog
 - [x] Task 10: Screenshot comparison vs renders/ + fix drift (host look pass + guest verify; screenshots/ per run)
 - [ ] Task 11: Commits, push branch os-build, open PR (no merge), update memory.md
-- [ ] Task 12: x86_64 target boot smoke (KVM fast-dev path)
+- [x] Task 12: x86_64 target boot smoke (KVM fast-dev path)
 
 ## Checkpoints
 - [x] Phase 1: ARM target boots to shell
 - [x] Phase 2: our pixels on screen (QEMU screendump), D-pad input works (sendkey tour)
 - [x] Phase 3 (host + ARM): desktop grid + settings navigable on screen
-- [ ] Phase 3: PR open
+- [x] Phase 3: PR open — https://github.com/nirodg/open-tv-launcher/pull/1
 
 ## Notes
 - Host dev loop: `make -C os/src run` + OTV_KEYSCRIPT tours; guest loop: `make -C os app-arm` → `run-arm-headless` → shot.py.
@@ -28,5 +28,8 @@
 - Keyscript clock: host_tick must get the measured frame delta, not a fixed 16 ms.
 - Known pace issue: under TCG (no KVM) every full-frame redraw takes seconds — fine for verification, use KVM x86 or real
   hardware for interactive feel. QEMU sendkey tours need generous delays (~1 key/s or more).
+- x86 specifics: q35 adds a default bochs VGA — pass `-vga none` or the screendump shows the wrong (blank) scanout;
+  x86 images put the rootfs at `out-x86/images/rootfs.ext2` (no .ext4 symlink). Packages must not glob `*.o` from the
+  shell cwd: both otv packages compile into `obj/` and archive/link from there.
 
 Status notes live in /memory.md (session-independent).

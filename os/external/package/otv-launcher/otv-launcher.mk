@@ -9,11 +9,12 @@ OTV_UI_DIR := $(BR2_EXTERNAL_OTV_PATH)/../src/ui
 OTV_ASSETS_DIR := $(BR2_EXTERNAL_OTV_PATH)/../assets
 
 define OTV_LAUNCHER_BUILD_CMDS
+	mkdir -p $(@D)/obj
 	set -e; for f in $(OTV_UI_DIR)/*.c $(@D)/*.c; do \
-		$(TARGET_CC) $(TARGET_CFLAGS) -c $$f -o $$(basename $$f .c).o \
+		$(TARGET_CC) $(TARGET_CFLAGS) -c $$f -o $(@D)/obj/$$(basename $$f .c).o \
 			-I$(OTV_UI_DIR) -I$(@D) -I$(STAGING_DIR)/usr/include; \
 	done
-	$(TARGET_CC) $(TARGET_LDFLAGS) *.o -o $(@D)/otv-launcher \
+	$(TARGET_CC) $(TARGET_LDFLAGS) $(@D)/obj/*.o -o $(@D)/otv-launcher \
 		-L$(STAGING_DIR)/usr/lib -lgateway -ldrm -lm
 endef
 

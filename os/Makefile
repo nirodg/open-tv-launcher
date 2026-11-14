@@ -61,6 +61,10 @@ app-arm:
 	$(MAKE) -C $(BR_SRC) O=$(OUT_ARM) otv-gateway-dirclean otv-launcher-dirclean \
 		otv-gateway otv-launcher all
 
+app-x86:
+	$(MAKE) -C $(BR_SRC) O=$(OUT_X86) otv-gateway-dirclean otv-launcher-dirclean \
+		otv-gateway otv-launcher all
+
 # ── run ──────────────────────────────────────────────────────────────────
 # Interactive: needs a display (gtk). Headless variants write boot.log + monitor
 # socket; use `make shot-<t>` for screenshots and os/tools/shot.py for scripted keys.
@@ -91,10 +95,10 @@ run-arm-headless:
 		-monitor unix:$(BUILD)/mon-arm.sock,server,nowait
 
 run-x86:
-	qemu-system-x86_64 -M q35 -enable-kvm -cpu host -smp 4 -m 2G \
-		-kernel $(IMAGES_X86)/images/bzImage \
+	qemu-system-x86_64 -M q35 -enable-kvm -cpu host -smp 4 -m 2G -vga none \
+		-kernel $(IMAGES_X86)/bzImage \
 		-append 'console=ttyS0 root=/dev/vda rw quiet' \
-		-drive file=$(IMAGES_X86)/images/rootfs.ext4,if=virtio,format=raw \
+		-drive file=$(IMAGES_X86)/rootfs.ext2,if=virtio,format=raw \
 		-device virtio-gpu-pci,xres=1920,yres=1080 \
 		-device virtio-keyboard-pci \
 		-fsdev local,id=fs0,path=$(SHARE),security_model=none \
@@ -103,10 +107,10 @@ run-x86:
 		-display gtk,gl=off
 
 run-x86-headless:
-	qemu-system-x86_64 -M q35 -enable-kvm -cpu host -smp 4 -m 2G \
-		-kernel $(IMAGES_X86)/images/bzImage \
+	qemu-system-x86_64 -M q35 -enable-kvm -cpu host -smp 4 -m 2G -vga none \
+		-kernel $(IMAGES_X86)/bzImage \
 		-append 'console=ttyS0 root=/dev/vda rw quiet' \
-		-drive file=$(IMAGES_X86)/images/rootfs.ext4,if=virtio,format=raw \
+		-drive file=$(IMAGES_X86)/rootfs.ext2,if=virtio,format=raw \
 		-device virtio-gpu-pci,xres=1920,yres=1080 \
 		-device virtio-keyboard-pci \
 		-fsdev local,id=fs0,path=$(SHARE),security_model=none \
