@@ -58,3 +58,11 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   now build CWD-independently into `obj/` (a stale `*.o` cwd glob once put launcher objects in the gateway archive and
   broke the x86 link). Debug inittab (launcher.log via 9p) reverted to the clean respawn. 10 commits on os-build;
   PR #1: https://github.com/nirodg/open-tv-launcher/pull/1 — ready for maintainer review; never merge without a yes.
+- 2026-11-14 (flashing fixed — double-buffered page flips): user reported flashing on every key/screen move on x86.
+  Cause: single-buffer scanout — every redraw repainted wallpaper+UI directly into the buffer the CRTC was scanning,
+  so the display caught half-drawn frames (tearing) constantly. Fix in display_drm.c: TWO dumb buffers, draw into the
+  off-screen one, drmModePageFlip (atomic swap, works on virtio-gpu — "page flip OK" in the boot log), then DIRTYFB the
+  shown buffer (kernel copies contents to the host on a flush). damage() is a no-op in flip mode (one 8 MB push per
+  frame, not two); automatic DIRTYFB fallback if flips are ever unavailable (OTV_NOFLIP=1 forces it for testing).
+  Verified on both targets: rapid key bursts + burst screendumps capture only complete, atomic frames
+  (screenshots/ 20261114-064741 x86-flip-*, 20261114-064928 arm-flip).

@@ -1,8 +1,14 @@
 /* gateway/guest/display_drm.c — DRM/KMS dumb-buffer scanout.
  * Public API decision: KMS/DRM, not fbdev. On real TV hardware the vendor
- * fbdev/blob sits behind this same file (port layer). Milestone 1 uses one
- * dumb buffer with SetCrtc; page-flip double buffering is a fast follow. */
+ * fbdev/blob sits behind this same file (port layer).
+ * Two dumb buffers are page-flipped: frames are drawn into the off-screen
+ * buffer and swapped atomically, so the scanout never sees a half-drawn
+ * frame (single-buffer scanout flashed/teared on every redraw). If page
+ * flips are unavailable the code falls back to drawing into the scanned
+ * buffer and pushing it with DIRTYFB. virtio-gpu only pushes buffer
+ * contents to the host on a flush (SetCrtc / flip / DIRTYFB). */
 #define _GNU_SOURCE
+#include <errno.h>
 #include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
@@ -20,12 +26,18 @@ static int drm_fd = -1;
 static drmModeConnector *conn;
 static drmModeCrtcPtr saved_crtc;
 static uint32_t crtc_id;
-static uint32_t fb_id;
-static uint32_t dumb_handle;
 static gw_surface surf;
-static uint8_t *map;
-static size_t map_size;
 static bool crtc_set;
+
+typedef struct {
+	uint32_t handle; /* dumb buffer */
+	uint32_t fb;     /* framebuffer wrapping it */
+	uint8_t *map;
+	size_t size;
+} DumbBuf;
+static DumbBuf buf[2];
+static int front;   /* index of the buffer the CRTC is scanning out */
+static bool flip_ok = true;
 
 static int find_output(drmModeRes *res)
 {
@@ -139,43 +151,52 @@ int gw_display_open(void)
 
 	saved_crtc = drmModeGetCrtc(drm_fd, crtc_id);
 
-	/* libdrm has no wrapper for CREATE_DUMB; use the ioctl directly.
-	 * handle/pitch/size come back filled in. */
-	struct drm_mode_create_dumb creq = {
-		.width = OTV_W,
-		.height = OTV_H,
-		.bpp = 32,
-	};
-	if (drmIoctl(drm_fd, DRM_IOCTL_MODE_CREATE_DUMB, &creq) != 0) {
-		fprintf(stderr, "otv: dumb buffer create failed\n");
-		return -1;
-	}
-	dumb_handle = creq.handle;
+	/* two dumb buffers for double-buffered flips; libdrm has no CREATE_DUMB
+	 * wrapper — use the ioctl directly (handle/pitch/size come back). */
+	int pitch = 0;
+	for (int i = 0; i < 2; i++) {
+		struct drm_mode_create_dumb creq = {
+			.width = OTV_W,
+			.height = OTV_H,
+			.bpp = 32,
+		};
+		if (drmIoctl(drm_fd, DRM_IOCTL_MODE_CREATE_DUMB, &creq) != 0) {
+			fprintf(stderr, "otv: dumb buffer create failed\n");
+			return -1;
+		}
+		buf[i].handle = creq.handle;
+		buf[i].size = (size_t)creq.size;
+		pitch = (int)creq.pitch;
 
-	struct drm_mode_map_dumb mreq = { .handle = dumb_handle };
-	if (drmIoctl(drm_fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq) != 0) {
-		fprintf(stderr, "otv: dumb buffer map ioctl failed\n");
-		return -1;
-	}
+		if (drmModeAddFB(drm_fd, OTV_W, OTV_H, 24, 32, creq.pitch,
+				 creq.handle, &buf[i].fb) != 0) {
+			fprintf(stderr, "otv: AddFB failed\n");
+			return -1;
+		}
 
-	if (drmModeAddFB(drm_fd, OTV_W, OTV_H, 24, 32, creq.pitch, dumb_handle, &fb_id) != 0) {
-		fprintf(stderr, "otv: AddFB failed\n");
-		return -1;
-	}
-
-	map_size = (size_t)creq.size;
-	map = mmap(NULL, map_size, PROT_READ | PROT_WRITE, MAP_SHARED, drm_fd, mreq.offset);
-	if (map == MAP_FAILED) {
-		fprintf(stderr, "otv: mmap dumb buffer failed\n");
-		return -1;
+		struct drm_mode_map_dumb mreq = { .handle = creq.handle };
+		if (drmIoctl(drm_fd, DRM_IOCTL_MODE_MAP_DUMB, &mreq) != 0) {
+			fprintf(stderr, "otv: dumb buffer map ioctl failed\n");
+			return -1;
+		}
+		buf[i].map = mmap(NULL, buf[i].size, PROT_READ | PROT_WRITE,
+				  MAP_SHARED, drm_fd, mreq.offset);
+		if (buf[i].map == MAP_FAILED) {
+			fprintf(stderr, "otv: mmap dumb buffer failed\n");
+			buf[i].map = NULL;
+			return -1;
+		}
 	}
 
 	surf.w = OTV_W;
 	surf.h = OTV_H;
-	surf.stride = (int)creq.pitch;
-	surf.pix = (uint32_t *)map;
+	surf.stride = pitch;
+	front = 0;
+	surf.pix = (uint32_t *)buf[1].map; /* draw into the off-screen buffer */
+	if (getenv("OTV_NOFLIP"))
+		flip_ok = false;
 
-	if (drmModeSetCrtc(drm_fd, crtc_id, fb_id, 0, 0, &conn->connector_id, 1,
+	if (drmModeSetCrtc(drm_fd, crtc_id, buf[0].fb, 0, 0, &conn->connector_id, 1,
 			   &conn->modes[0]) != 0) {
 		fprintf(stderr, "otv: SetCrtc failed\n");
 		return -1;
@@ -186,27 +207,52 @@ int gw_display_open(void)
 
 gw_surface *gw_display_fb(void) { return crtc_set ? &surf : NULL; }
 
+static void push_front(void)
+{
+	drmModeClip clip = { .x1 = 0, .y1 = 0, .x2 = OTV_W - 1, .y2 = OTV_H - 1 };
+	drmModeDirtyFB(drm_fd, buf[front].fb, &clip, 1);
+}
+
 void gw_display_present(void)
 {
-	/* single-buffer scanout: the CRTC reads the buffer continuously. */
+	if (drm_fd < 0 || !crtc_set)
+		return;
+	if (flip_ok) {
+		int back = !front;
+		static bool said;
+		int rc = drmModePageFlip(drm_fd, crtc_id, buf[back].fb, 0, NULL);
+		if (rc == 0) {
+			if (!said) {
+				said = true;
+				fprintf(stderr, "otv: page flip OK (double-buffered)\n");
+			}
+			front = back;
+			surf.pix = (uint32_t *)buf[!front].map;
+		} else {
+			if (!said) {
+				said = true;
+				fprintf(stderr,
+					"otv: page flip failed (%s) — DIRTYFB fallback\n",
+					strerror(errno));
+			}
+			/* flips unsupported here: keep drawing into the shown
+			 * buffer and rely on the DIRTYFB flush below */
+			flip_ok = false;
+			surf.pix = (uint32_t *)buf[front].map;
+		}
+	}
+	/* the kernel only copies buffer contents to the host on a flush */
+	push_front();
 }
 
 void gw_display_damage(int x, int y, int w, int h)
 {
-	/* The virtio-gpu kernel driver only pushes buffer contents to the
-	 * host on a flush (SetCrtc / page flip / DIRTYFB). Userspace CPU
-	 * writes to the dumb buffer are invisible otherwise, so damage
-	 * turns into a full-frame DIRTYFB flush. */
-	if (drm_fd < 0 || !crtc_set)
+	/* the flip path pushes the whole frame in present(); in the no-flip
+	 * fallback present() pushes it too — nothing per-rect here */
+	if (drm_fd < 0 || !crtc_set || flip_ok)
 		return;
-	drmModeClip clip = {
-		.x1 = x, .y1 = y, .x2 = x + w - 1, .y2 = y + h - 1
-	};
-	if (clip.x1 < 0) clip.x1 = 0;
-	if (clip.y1 < 0) clip.y1 = 0;
-	if (clip.x2 >= OTV_W) clip.x2 = OTV_W - 1;
-	if (clip.y2 >= OTV_H) clip.y2 = OTV_H - 1;
-	drmModeDirtyFB(drm_fd, fb_id, &clip, 1);
+	(void)x; (void)y; (void)w; (void)h;
+	push_front();
 }
 
 void gw_display_close(void)
@@ -219,12 +265,15 @@ void gw_display_close(void)
 			       &saved_crtc->mode);
 	if (saved_crtc)
 		drmModeFreeCrtc(saved_crtc);
-	if (fb_id)
-		drmModeRmFB(drm_fd, fb_id);
-	if (map)
-		munmap(map, map_size);
-	if (dumb_handle)
-		drmModeDestroyDumbBuffer(drm_fd, dumb_handle);
+	for (int i = 0; i < 2; i++) {
+		if (buf[i].fb)
+			drmModeRmFB(drm_fd, buf[i].fb);
+		if (buf[i].map)
+			munmap(buf[i].map, buf[i].size);
+		if (buf[i].handle)
+			drmModeDestroyDumbBuffer(drm_fd, buf[i].handle);
+		buf[i] = (DumbBuf){ 0 };
+	}
 	if (conn)
 		drmModeFreeConnector(conn);
 	drmDropMaster(drm_fd);
