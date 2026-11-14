@@ -10,7 +10,7 @@ OTV_GATEWAY_DEPENDENCIES = libdrm
 
 define OTV_GATEWAY_BUILD_CMDS
 	mkdir -p $(@D)/obj
-	set -e; for f in $(@D)/time.c $(@D)/guest/*.c; do \
+	set -e; for f in $(@D)/time.c $(@D)/device.c $(@D)/guest/*.c; do \
 		$(TARGET_CC) $(TARGET_CFLAGS) -c $$f -o $(@D)/obj/$$(basename $$f .c).o \
 			-I$(@D)/include -I$(STAGING_DIR)/usr/include/drm; \
 	done

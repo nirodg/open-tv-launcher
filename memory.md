@@ -66,3 +66,11 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   frame, not two); automatic DIRTYFB fallback if flips are ever unavailable (OTV_NOFLIP=1 forces it for testing).
   Verified on both targets: rapid key bursts + burst screendumps capture only complete, atomic frames
   (screenshots/ 20261114-064741 x86-flip-*, 20261114-064928 arm-flip).
+- 2026-11-14 (device description + backend switch): new `/etc/otv/device.conf` — the Android-style per-device setup
+  file naming the gateway backend per service (display/audio/network/storage/samples); parsed by gateway/device.c
+  (tiny INI, no deps), logged at startup, `OTV_DEVICE_CONF` overrides the path on the host. Render backend is now a
+  conf choice: `kms-dumb` (CPU, default — the no-proprietary-blobs rule) vs `kms-gles2` (GPU, declared; falls back
+  with a clear log line until the GBM/EGL backend lands). QEMU images ship sample clips at /media/internal/promo.mp4
+  and /media/external/promo.mp4 (os/tools/make-samples.sh, deterministic ffmpeg testsrc2, 134 KB each) for the later
+  Video app (task 14). Verified on both guests (device lines in boot log; x86 UI up in ~8 s).
+- Pending: Video app real impl (task 14), kms-gles2 GPU backend (task 15).

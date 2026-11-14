@@ -37,6 +37,51 @@ batch per verification run — the user reviews them there. Host batches come fr
 keyscript tours; guest batches from QEMU screendumps (`os/tools/shot.py`, also
 drives `--keys` D-pad tours through the monitor socket).
 
+## Device description — one file per device (Android-style)
+
+The Open TV analogue of Android's board configs + HAL configuration files:
+`/etc/otv/device.conf` names the gateway **backend** each service uses on the
+device it ships with. The OS above the gateway never changes between devices —
+only this file and the gateway backends it names.
+
+```ini
+[display]
+backend = kms-dumb     ; CPU rasterizer: no GPU, no vendor blobs, everywhere
+                       ; kms-gles2 = optional GBM/EGL GPU path (declared)
+
+[audio]
+backend = null         ; null (QEMU) | alsa | tinyalsa (real board later)
+
+[network]
+backend = mock         ; mock (QEMU simulates online state) | real
+
+[storage]
+internal = /media/internal
+external = /media/external
+```
+
+**Rendering: software first, GPU optional.** The default is `kms-dumb` —
+KMS/DRM dumb buffers + our CPU rasterizer — so nobody porting this to a TV
+needs to reverse-engineer vendor GL libraries. The GPU path (`kms-gles2`,
+GBM/EGL behind the same `gw_display` API) is the optional upgrade for devices
+with open drivers (x86 testing boxes, panfrost/lima-class SoCs); until it
+lands, any other backend value falls back to `kms-dumb` with a clear log
+line. QEMU GPU passthrough (virtio-gpu `venus`/virgl + guest Mesa) will be
+attached when that backend exists — the KVM x86 target is already seamless
+with software rendering and page-flips.
+
+The QEMU targets ship an **all-simulated** device (screen, audio, network,
+storage); a real TV port writes its own `device.conf` and implements only the
+gateway backends it names. The launcher logs the whole description at startup
+(`otv: device …` lines). Host dev loops can point at a different file with
+`OTV_DEVICE_CONF=…` (missing file = built-in defaults).
+
+## Samples
+
+`media/internal/promo.mp4` and `media/external/promo.mp4` (same 3 s test clip)
+ship in the QEMU images so the later Video app can read them from both
+storages. Regenerate with `os/tools/make-samples.sh` (ffmpeg, deterministic).
+
 ## Fast UI iteration (host, no QEMU)
 
 The launcher has a host mode using the same renderer code — the gateway swaps its

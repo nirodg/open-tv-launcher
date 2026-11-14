@@ -19,6 +19,7 @@ LDLIBS := -lm
 UI_SRC := $(wildcard $(SRC)/ui/*.c)
 LAUNCHER_SRC := $(wildcard $(SRC)/launcher/*.c)
 GW_SRC := $(SRC)/gateway/time.c \
+	  $(SRC)/gateway/device.c \
 	  $(wildcard $(SRC)/gateway/hostdev/*.c)
 OBJ := $(patsubst $(SRC)/%.c,$(BUILD)/%.o,$(UI_SRC) $(LAUNCHER_SRC) $(GW_SRC))
 BIN := $(BUILD)/otv-launcher

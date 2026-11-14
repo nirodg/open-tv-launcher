@@ -52,4 +52,6 @@ void gw_time_parts(int *h, int *m, int *s, int *wd, int *day, int *mon, int *yea
 const char *gw_wd_name(int wd);      /* "Sunday" … */
 const char *gw_mon_name(int mon);    /* "January" … */
 
+#include "gateway/device.h"
+
 #endif /* GATEWAY_H */

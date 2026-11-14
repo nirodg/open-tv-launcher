@@ -12,6 +12,9 @@
 - [x] Task 10: Screenshot comparison vs renders/ + fix drift (host look pass + guest verify; screenshots/ per run)
 - [ ] Task 11: Commits, push branch os-build, open PR (no merge), update memory.md
 - [x] Task 12: x86_64 target boot smoke (KVM fast-dev path)
+- [x] Task 13: Device description file (`/etc/otv/device.conf`) + render-backend switch (kms-dumb default, kms-gles2 declared) + sample promo.mp4 in both storages
+- [ ] Task 14: Video app (real impl, per mockups): read `storage.internal`/`storage.external` from device.conf, list + play mp4s (Media3-style pipeline later; software decode first), `/media/*/promo.mp4` as first content
+- [ ] Task 15: GPU render backend `kms-gles2` (GBM/EGL behind gw_display; QEMU: virtio-gpu venus/virgl + guest Mesa) — optional per device.conf
 
 ## Checkpoints
 - [x] Phase 1: ARM target boots to shell

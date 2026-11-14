@@ -5,7 +5,13 @@
  * behind the same gateway calls for desktop iteration. */
 #define _GNU_SOURCE
 #include "drawui.h"
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include "gateway/gateway.h"
+#include "gateway/device.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -178,6 +184,20 @@ static float now_sec(void)
 /* ── the loop ──────────────────────────────────────────────────────────── */
 int main(void)
 {
+	/* The device description file (Android-style board/HAL config, unified)
+	 * decides which gateway backend each service uses. QEMU targets ship a
+	 * simulated one; a real TV port ships its own. */
+	const char *dev = getenv("OTV_DEVICE_CONF");
+	if (otv_device_init(dev && dev[0] ? dev : "/etc/otv/device.conf") == 0) {
+		fprintf(stderr, "otv: device %s\n", otv_device_str("device", "name", "?"));
+		for (const char *p = otv_device_summary(), *nl;
+		     (nl = strchr(p, '\n')) && *p; p = nl + 1)
+			fprintf(stderr, "otv:   %.*s\n", (int)(nl - p), p);
+	} else {
+		fprintf(stderr,
+			"otv: no device description file (built-in defaults)\n");
+	}
+
 	char dir[256];
 	const char *env = getenv("OTV_FONTS");
 	snprintf(dir, sizeof dir, "%s", env && env[0] ? env : "/usr/share/otv/fonts");
