@@ -4,7 +4,6 @@ SHELL := /bin/bash
 OTV_ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 BUILD := $(OTV_ROOT)/build
 DL := $(BUILD)/dl
-SHARE := $(BUILD)/share
 
 # Pinned Buildroot release (newest stable available at adoption; verify .sign for release builds)
 BR_VER := 2025.11.3
@@ -16,6 +15,13 @@ EXT := $(OTV_ROOT)/external
 
 OUT_ARM := $(BUILD)/out-arm
 OUT_X86 := $(BUILD)/out-x86
+
+# Persistent test volume (outside os/build so rebuilds never touch it).
+# media/ ↔ guest /media/internal, usb/ ↔ /media/external, host/ ↔ /mnt/host.
+# Override with: make -C os VOL=/somewhere run-x86
+VOL ?= /tmp/opentv
+SHARE := $(VOL)/host
+SEED := $(EXT)/board/opentv/overlay/usr/share/otv/samples/promo.mp4
 
 IMAGES_ARM := $(OUT_ARM)/images
 IMAGES_X86 := $(OUT_X86)/images
@@ -65,10 +71,23 @@ app-x86:
 	$(MAKE) -C $(BR_SRC) O=$(OUT_X86) otv-gateway-dirclean otv-launcher-dirclean \
 		otv-gateway otv-launcher all
 
+# ── persistent test volume ───────────────────────────────────────────────
+# Seeds the media folder with the sample clip on first use. Drop your own
+# .mp4 files into $(VOL)/media and they appear in the Video app (re-enter the
+# app or reboot; no rebuild needed).
+vol-prep:
+	@mkdir -p $(VOL)/media $(VOL)/usb $(SHARE)
+	@if [ -e "$(SEED)" ] && [ -z "$$(ls -A $(VOL)/media 2>/dev/null)" ]; then \
+		cp "$(SEED)" "$(VOL)/media/"; \
+		echo "seeded $(VOL)/media with the sample clip"; \
+	fi
+
+.PHONY: vol-prep
+
 # ── run ──────────────────────────────────────────────────────────────────
 # Interactive: needs a display (gtk). Headless variants write boot.log + monitor
 # socket; use `make shot-<t>` for screenshots and os/tools/shot.py for scripted keys.
-run-arm:
+run-arm: vol-prep
 	qemu-system-aarch64 -M virt -cpu cortex-a53 -smp 2 -m 1G \
 		-device virtio-tablet-pci \
 		-kernel $(IMAGES_ARM)/Image \
@@ -78,10 +97,14 @@ run-arm:
 		-device virtio-keyboard-pci \
 		-fsdev local,id=fs0,path=$(SHARE),security_model=none \
 		-device virtio-9p-pci,fsdev=fs0,mount_tag=hostshare \
+		-fsdev local,id=fsvol,path=$(VOL)/media,security_model=none \
+		-device virtio-9p-pci,fsdev=fsvol,mount_tag=mediavol \
+		-fsdev local,id=fsusb,path=$(VOL)/usb,security_model=none \
+		-device virtio-9p-pci,fsdev=fsusb,mount_tag=usbsim \
 		-netdev user,id=n0 -device virtio-net-pci,netdev=n0 \
 		-display gtk,gl=off
 
-run-arm-headless:
+run-arm-headless: vol-prep
 	qemu-system-aarch64 -M virt -cpu cortex-a53 -smp 2 -m 1G \
 		-device virtio-tablet-pci \
 		-kernel $(IMAGES_ARM)/Image \
@@ -91,13 +114,17 @@ run-arm-headless:
 		-device virtio-keyboard-pci \
 		-fsdev local,id=fs0,path=$(SHARE),security_model=none \
 		-device virtio-9p-pci,fsdev=fs0,mount_tag=hostshare \
+		-fsdev local,id=fsvol,path=$(VOL)/media,security_model=none \
+		-device virtio-9p-pci,fsdev=fsvol,mount_tag=mediavol \
+		-fsdev local,id=fsusb,path=$(VOL)/usb,security_model=none \
+		-device virtio-9p-pci,fsdev=fsusb,mount_tag=usbsim \
 		-netdev user,id=n0 -device virtio-net-pci,netdev=n0 \
 		-display none \
 		-serial file:$(BUILD)/boot-arm.log \
 		-qmp unix:$(BUILD)/qmp-arm.sock,server,nowait \
 		-monitor unix:$(BUILD)/mon-arm.sock,server,nowait
 
-run-x86:
+run-x86: vol-prep
 	qemu-system-x86_64 -M q35 -enable-kvm -cpu host -smp 4 -m 2G -vga none \
 		-device virtio-tablet-pci \
 		-kernel $(IMAGES_X86)/bzImage \
@@ -107,10 +134,14 @@ run-x86:
 		-device virtio-keyboard-pci \
 		-fsdev local,id=fs0,path=$(SHARE),security_model=none \
 		-device virtio-9p-pci,fsdev=fs0,mount_tag=hostshare \
+		-fsdev local,id=fsvol,path=$(VOL)/media,security_model=none \
+		-device virtio-9p-pci,fsdev=fsvol,mount_tag=mediavol \
+		-fsdev local,id=fsusb,path=$(VOL)/usb,security_model=none \
+		-device virtio-9p-pci,fsdev=fsusb,mount_tag=usbsim \
 		-netdev user,id=n0 -device virtio-net-pci,netdev=n0 \
 		-display gtk,gl=off
 
-run-x86-headless:
+run-x86-headless: vol-prep
 	qemu-system-x86_64 -M q35 -enable-kvm -cpu host -smp 4 -m 2G -vga none \
 		-device virtio-tablet-pci \
 		-kernel $(IMAGES_X86)/bzImage \
@@ -120,6 +151,10 @@ run-x86-headless:
 		-device virtio-keyboard-pci \
 		-fsdev local,id=fs0,path=$(SHARE),security_model=none \
 		-device virtio-9p-pci,fsdev=fs0,mount_tag=hostshare \
+		-fsdev local,id=fsvol,path=$(VOL)/media,security_model=none \
+		-device virtio-9p-pci,fsdev=fsvol,mount_tag=mediavol \
+		-fsdev local,id=fsusb,path=$(VOL)/usb,security_model=none \
+		-device virtio-9p-pci,fsdev=fsusb,mount_tag=usbsim \
 		-netdev user,id=n0 -device virtio-net-pci,netdev=n0 \
 		-display none \
 		-serial file:$(BUILD)/boot-x86.log \

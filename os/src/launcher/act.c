@@ -70,6 +70,7 @@ static void open_app(const char *id)
 		return;
 	}
 	if (!strcmp(id, "video")) {
+		vid_rescan(); /* files may have been dropped on the volume */
 		scene_go("video", ""); /* real app screen (task 14) */
 		return;
 	}

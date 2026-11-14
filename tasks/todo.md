@@ -22,6 +22,8 @@
 - [ ] Task 16 (audio half): audio output backend (ALSA/gateway; QEMU `-audiodev`) — the player decodes video only for now
 - [ ] Task 17: on-screen keyboard (InputMethodService-equivalent) — unblocks play-a-link, add-network-share, rename, custom device name
 
+- [x] Task 18: persistent QEMU test volume (/tmp/opentv) — host media/usb folders 9p-mounted as the guest storages; drop-in → appears on app entry; app-deletes hit the host; survives reboots/rebuilds. Fixed the missing /proc mount (S00mount) that had broken mount/network since the first boot.
+
 ## Checkpoints
 - [x] Phase 1: ARM target boots to shell
 - [x] Phase 2: our pixels on screen (QEMU screendump), D-pad input works (sendkey tour)

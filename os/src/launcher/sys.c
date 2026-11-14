@@ -1297,6 +1297,7 @@ static void vid_scan_dir(const char *dir, const char *folder)
 		if (stat(v->path, &st) != 0)
 			continue;
 		v->size = st.st_size;
+		v->order = st.st_mtime;
 		struct tm tmv;
 		localtime_r(&st.st_mtime, &tmv);
 		strftime(v->date, sizeof v->date, "%-d %b %Y", &tmv);
@@ -1341,8 +1342,26 @@ VidClip *vid_clips(int *n)
 
 void vid_rescan(void)
 {
+	/* keep playback state (position, watched) for files that still exist */
+	struct { char path[256]; int pos, dur; bool watched; } keep[24];
+	int nk = nvids < 24 ? nvids : 24;
+	for (int i = 0; i < nk; i++) {
+		snprintf(keep[i].path, sizeof keep[i].path, "%s", vids[i].path);
+		keep[i].pos = vids[i].pos;
+		keep[i].dur = vids[i].dur;
+		keep[i].watched = vids[i].watched;
+	}
 	vids_init = false;
 	nvids = 0;
+	int n;
+	(void)vid_clips(&n); /* rescan */
+	for (int i = 0; i < nvids; i++)
+		for (int k = 0; k < nk; k++)
+			if (!strcmp(vids[i].path, keep[k].path)) {
+				vids[i].pos = keep[k].pos;
+				vids[i].watched = keep[k].watched;
+				break;
+			}
 }
 
 /* ── network shares (prototype mock; real SMB/DLNA with the media backend) */

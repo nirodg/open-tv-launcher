@@ -481,16 +481,15 @@ static int sort_cmp(const void *pa, const void *pb)
 	const VidClip *a = *(const VidClip *const *)pa;
 	const VidClip *b = *(const VidClip *const *)pb;
 	const char *s = sv("vidSort");
-	int r = strcmp(a->folder, b->folder);
 	if (!strcmp(s, "Oldest"))
-		return r;
+		return (int)(a->order - b->order);
 	if (!strcmp(s, "Name A–Z"))
 		return strcasecmp(a->title, b->title);
 	if (!strcmp(s, "Longest"))
 		return b->dur - a->dur;
 	if (!strcmp(s, "Largest"))
 		return (int)((b->size - a->size) >> 20);
-	return -r; /* Newest */
+	return (int)(b->order - a->order); /* Newest */
 }
 static void sorted_local(void)
 {

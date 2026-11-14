@@ -1,0 +1,8 @@
+#!/bin/sh
+# Mount the filesystems from /etc/fstab (proc, sys, devpts, /tmp, /run).
+# The stock image was missing this step — /proc was never mounted, which
+# broke mount listings, sysctl and the network scripts.
+mount -a 2>/dev/null
+
+# remount / read-write (the ext2 root boots ro in some setups)
+mount -o remount,rw / 2>/dev/null

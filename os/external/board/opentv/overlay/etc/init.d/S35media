@@ -1,0 +1,22 @@
+#!/bin/sh
+# Mount the persistent media volume (9p from the host's /tmp/opentv — see
+# os/README.md). /media/internal is the TV's storage, /media/external the
+# "USB drive". Files dropped on the host appear here without a rebuild;
+# deletes from the Video app remove them on the host too.
+mkdir -p /media/internal /media/external
+i=0
+while [ $i -lt 10 ]; do
+	mount -t 9p -o trans=virtio,version=9p2000.L mediavol /media/internal && break
+	i=$((i+1))
+	sleep 1
+done
+[ $i -ge 10 ] && echo "media: mediavol mount failed:"
+mount | grep " /media/" || true
+i=0
+while [ $i -lt 10 ]; do
+	mount -t 9p -o trans=virtio,version=9p2000.L usbsim /media/external && break
+	i=$((i+1))
+	sleep 1
+done
+mount | grep -q " /media/internal " && echo "media: /media/internal mounted" \
+	|| echo "media: /media/internal not mounted (baked files in use)"

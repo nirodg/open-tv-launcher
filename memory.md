@@ -100,6 +100,16 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   Audio still deferred (audio backend null per device.conf). Verified REAL decode on both guests: mouse
   click → 60 s clip plays (frames differ over time, seek works, zero respawns); host keyscript D-pad flow
   works too (open app → OK → plays). License note: ffmpeg built LGPL (no GPL/nonfree options enabled).
+- 2026-11-15 (persistent test volume): /tmp/opentv is the QEMU test volume — media/ ↔ /media/internal,
+  usb/ ↔ /media/external, host/ ↔ /mnt/host (SHARE moved out of os/build; survives rebuilds). Run targets
+  depend on vol-prep (mkdir + seed the sample clip into media/ when empty). S35media mounts the two 9p tags;
+  S00mount FIXED A LONG-STANDING BUG: /proc (and sys/devpts/tmp/run) were never mounted — buildroot's
+  initscripts S00mount was absent from the image, which broke mount listings, sysctl and the network sed
+  (the warning was there since the first boot). Video app: vid_rescan() now PRESERVES pos/watched by path
+  and runs on app entry — files dropped on the host appear without a rebuild; deletes remove them on the
+  host. Newest/Oldest sorts use real file mtime (VidClip.order) instead of folder names. make-samples.sh
+  writes the seed to usr/share/otv/samples (one copy). Verified on x86: drop → appears on app entry,
+  app-delete → gone on the host, reboot → everything persists, volume mounts every boot.
 - Pending: audio backend (task 16 remainder), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
 - 2026-11-14 (visible cursor): the UI now draws a software cursor — a classic white arrow (×1.5 for 1080p,
   ≈28 px) with a dark outline, scanline-polygon-rasterized in scene.c (poly_span), tracked in scene_pointer

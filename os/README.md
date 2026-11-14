@@ -85,15 +85,35 @@ gateway backends it names. The launcher logs the whole description at startup
 (`otv: device …` lines). Host dev loops can point at a different file with
 `OTV_DEVICE_CONF=…` (missing file = built-in defaults).
 
-## Samples
+## Persistent test volume — /tmp/opentv
 
-`media/internal/promo.mp4` and `media/external/promo.mp4` (same 3 s test clip)
-ship in the QEMU images so the Video app can read them from both storages.
-Each clip has a `<name>.dur` sidecar (duration, seconds) and a `<name>.jpg`
-filmstrip (12 fps frame grid) that the player "plays" — QEMU has no video
-decode in the image yet; the real media backend (decode + audio) is the
-follow-up and replaces the filmstrip path. Regenerate everything with
-`os/tools/make-samples.sh` (ffmpeg, deterministic).
+All run targets mount the host folder `/tmp/opentv` into the guest, so you can
+test WITHOUT rebuilding (or asking an agent for anything):
+
+```
+/tmp/opentv/media   ↔  guest /media/internal   the TV's storage (Video app)
+/tmp/opentv/usb     ↔  guest /media/external   the "USB drive"
+/tmp/opentv/host    ↔  guest /mnt/host         binary-swap share (dev loop)
+```
+
+- The media folder is seeded with the sample clip on first boot; drop any
+  `.mp4` into `/tmp/opentv/media` and it appears in the Video app the next
+  time you open it (rescans on entry) — no rebuild, no reboot.
+- Deleting a video in the app removes the file from the host folder.
+- Everything survives reboots and image rebuilds (the folder is outside
+  `os/build/`). Override the location with `make -C os VOL=/somewhere run-x86`.
+
+The guest mounts the shares at boot (`S35media`); the run targets create and
+seed the folders (`vol-prep`). A `/proc` mount was missing from the image
+since the first boot (`S00mount` now runs `mount -a` from /etc/fstab) — that
+is also why the network script used to print a sed warning.
+
+The sample clip lives in the image as a SEED
+(`usr/share/otv/samples/promo.mp4`): the run targets copy it into the
+persistent volume on first boot (see above). Regenerate it with
+`os/tools/make-samples.sh` (60 s, 480×270 H.264 + a quiet AAC track,
+deterministic ffmpeg testsrc2). The player decodes it for real (FFmpeg libs);
+durations come from the container.
 
 ## The Video app
 

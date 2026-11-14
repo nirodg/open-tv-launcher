@@ -32,6 +32,7 @@ typedef struct {
 	int fps;
 	long size;          /* bytes */
 	int dur, pos;       /* seconds */
+	long order;         /* mtime, for Newest/Oldest sorts */
 	bool watched, live, is_share;
 } VidClip;
 VidClip *vid_clips(int *n);       /* local files, lazily scanned */
