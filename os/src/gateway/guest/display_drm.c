@@ -18,6 +18,7 @@
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 #include "gateway/gateway.h"
+#include "gateway/device.h"
 
 #define OTV_W 1920
 #define OTV_H 1080
@@ -138,6 +139,19 @@ int gw_display_open(void)
 		fprintf(stderr, "otv: cannot open /dev/dri/card0\n");
 		return -1;
 	}
+	/* Render backend from the device description: "kms-dumb" is the
+	 * CPU rasterizer (no GPU, no proprietary blobs — the default everywhere);
+	 * "kms-gles2" is the optional GBM/EGL GPU path, landing behind this same
+	 * API. Until that backend exists, any other value falls back with a
+	 * clear note. */
+	const char *rbackend = otv_device_str("display", "backend", "kms-dumb");
+	if (strcmp(rbackend, "kms-dumb") != 0)
+		fprintf(stderr,
+			"otv: display backend '%s' is not in this build — using kms-dumb (CPU)\n",
+			rbackend);
+	else
+		fprintf(stderr, "otv: display backend kms-dumb (CPU rasterizer)\n");
+
 	if (drmSetMaster(drm_fd) != 0)
 		fprintf(stderr, "otv: drmSetMaster failed (continuing)\n");
 
