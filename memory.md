@@ -88,7 +88,19 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   NOT deliver to the tablet under -display none (wasted a long debug session on it — the "frozen" app was a
   stale QEMU instance + a paused player's static frame). GOTCHA: vid_clips(NULL) crashed the Folders tab
   (NULL out-param). All flows verified with the mouse on both guests (x86 + ARM) — zero respawns.
-- Pending: real media backend (task 16), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
+- 2026-11-14 (REAL video playback): the player now decodes with the FFmpeg libraries — ui/media.c (libavformat
+  open + best video stream, libavcodec decode, swscale → BGRA = the surface layout, backward/large-forward
+  seeks jump to the previous keyframe), the filmstrip path removed. Durations probe from the container
+  (media_probe_duration) — .dur/.jpg sidecars gone; sample promo.mp4 regenerated at 60 s (make-samples.sh).
+  Defconfig: BR2_PACKAGE_FFMPEG=y (+SWSCALE=y — a separate option that defaults OFF; also: defconfig changes
+  need a re-run of config-<t> AND ffmpeg-dirclean when the option set changes). otv-launcher links
+  -lavformat -lavcodec -lswscale -lavutil (host dev build too). THE USER'S "cannot even play it" BUG: the
+  video app's TAB nodes were data-default, so opening the app and pressing OK re-selected the Videos tab
+  instead of playing the focused card — tabs are never the default (prototype: first content item is).
+  Audio still deferred (audio backend null per device.conf). Verified REAL decode on both guests: mouse
+  click → 60 s clip plays (frames differ over time, seek works, zero respawns); host keyscript D-pad flow
+  works too (open app → OK → plays). License note: ffmpeg built LGPL (no GPL/nonfree options enabled).
+- Pending: audio backend (task 16 remainder), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
 - 2026-11-14 (visible cursor): the UI now draws a software cursor — a classic white arrow (×1.5 for 1080p,
   ≈28 px) with a dark outline, scanline-polygon-rasterized in scene.c (poly_span), tracked in scene_pointer
   (dirty on move) and drawn LAST in scene_draw (over effects, toast, everything). With a virtio-tablet the

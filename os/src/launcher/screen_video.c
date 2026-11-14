@@ -12,6 +12,7 @@
 #include "drawui.h"
 #include "sys.h"
 #include "img.h"
+#include "media.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,12 +42,10 @@ static struct {
 	float speed;
 	char cc[16];
 	int zoom;             /* 0 fit · 1 fill · 2 original */
-	Img *strip;
-	char strip_path[292];
-	int strip_cols, strip_rows;
+	Media *media;         /* real decode session (local files) */
 } vs = { .tab = "videos", .view = V_HOME, .speed = 1 };
+static const int PFPS = 24; /* player redraw cadence while playing */
 
-static const int FW = 480, FH = 270, FPS = 12;
 
 /* ── string arenas: row text must outlive the build call ───────────────── */
 static char arena[4096];
@@ -151,29 +150,6 @@ static int cur_pos(float now)
 	return p < 0 ? 0 : p;
 }
 
-static void load_strip(void)
-{
-	img_free(vs.strip);
-	vs.strip = NULL;
-	vs.strip_path[0] = 0;
-	if (!vs.m || vs.m->is_share || !vs.m->path[0])
-		return;
-	char jpg[288];
-	snprintf(jpg, sizeof jpg, "%.*s.jpg",
-		 (int)(strlen(vs.m->path) - 4), vs.m->path);
-	vs.strip = img_load(jpg);
-	if (vs.strip) {
-		snprintf(vs.strip_path, sizeof vs.strip_path, "%s", jpg);
-		vs.strip_cols = vs.strip->w / FW;
-		vs.strip_rows = vs.strip->h / FH;
-		if (vs.strip_cols < 1 || vs.strip_rows < 1) {
-			img_free(vs.strip);
-			vs.strip = NULL;
-			vs.strip_path[0] = 0;
-		}
-	}
-}
-
 static void vid_list_of(const char *ctx)
 {
 	vs.nlist = 0;
@@ -219,7 +195,18 @@ static void play_run(int from)
 	vs.t0 = gw_now();
 	vs.hid = false;
 	vs.view = V_PLAY;
-	load_strip();
+	media_close(vs.media);
+	vs.media = NULL;
+	if (!vs.m->is_share && vs.m->path[0]) {
+		double d = 0;
+		vs.media = media_open(vs.m->path);
+		if (vs.media && (d = media_probe_duration(vs.m->path)) > 0 &&
+		    (int)d != vs.m->dur) {
+			vs.m->dur = (int)d; /* honest duration from the container */
+			if (vs.base_pos > vs.m->dur)
+				vs.base_pos = vs.m->dur;
+		}
+	}
 	scene_refresh();
 }
 
@@ -304,9 +291,8 @@ static bool video_back(void)
 		if (vs.m->pos >= vs.m->dur - 1)
 			vs.m->watched = true;
 		vs.view = vs.from_view;
-		img_free(vs.strip);
-		vs.strip = NULL;
-		vs.strip_path[0] = 0;
+		media_close(vs.media);
+		vs.media = NULL;
 		scene_mark_dirty();
 		scene_refresh();
 		return true;
@@ -338,10 +324,10 @@ static void video_tick(float now)
 	}
 	int p = cur_pos(now);
 	static long last_frame = -1;
-	long frame = (long)p * FPS;
+	long frame = (long)(p * PFPS);
 	if (frame != last_frame) {
 		last_frame = frame;
-		scene_mark_dirty(); /* 12 fps content + progress */
+		scene_mark_dirty(); /* 24 fps content + progress */
 	}
 	if (p >= vs.m->dur) {
 		vs.base_pos = vs.m->dur;
@@ -575,8 +561,10 @@ static void video_build(Layer *L, const char *param)
 		}
 		float x = (OTV_W - total) / 2 + 8;
 		for (int i = 0; i < 4; i++) {
+			/* tabs are NOT the default focus — the first content
+			 * item is (prototype data-default on cards, not tabs) */
 			lnode(L, rrect(x, 56, tw[i], 60), vb("vt-%s", VT[i].id),
-			      vb("vtab:%s", VT[i].id), !strcmp(vs.tab, VT[i].id));
+			      vb("vtab:%s", VT[i].id), false);
 			x += tw[i] + 6;
 		}
 
@@ -797,11 +785,11 @@ static void video_draw(gw_surface *s, Layer *L, float now)
 		float sc = vs.zoom == 1 ? 1.18f : vs.zoom == 2 ? 0.78f : 1.0f;
 		R dst = rrect(OTV_W / 2 - OTV_W * sc / 2, OTV_H / 2 - OTV_H * sc / 2,
 			      OTV_W * sc, OTV_H * sc);
-		if (vs.strip) {
-			int total = vs.strip_cols * vs.strip_rows;
-			int fi = p * FPS % total;
-			img_draw(s, vs.strip, dst, (fi % vs.strip_cols) * FW,
-				 (fi / vs.strip_cols) * FH, FW, FH);
+		const uint32_t *fr = vs.media ? media_frame(vs.media, p) : NULL;
+		if (fr && media_w(vs.media) > 0) {
+			Img view = { media_w(vs.media), media_h(vs.media),
+				     (uint32_t *)fr };
+			img_draw(s, &view, dst, 0, 0, view.w, view.h);
 		} else {
 			gfx_clear(s, (Col){ 0, 0, 0, 255 });
 			art_draw(s, rrect(dst.x + 240 * sc, dst.y, 1440 * sc,
@@ -1018,7 +1006,6 @@ static void video_draw(gw_surface *s, Layer *L, float now)
 				text_tl(F18, s, 108, 214, "On this TV", C_T3);
 				rows_draw(s, L, n0, sy);
 			} else if (!strcmp(vs.tab, "network")) {
-				int ns = vid_shares_count();
 				text_tl(F18, s, 108, 214,
 					"Shares on your network · hold OK to forget one", C_T3);
 				rows_draw(s, L, n0, sy); /* one group: shares+add+link */

@@ -23,3 +23,8 @@ BR2_TARGET_GENERIC_ISSUE="Open TV OS (placeholder name) — development image"
 BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_OTV_PATH)/board/opentv/overlay"
 BR2_PACKAGE_LIBDRM=y
 BR2_PACKAGE_OTV_LAUNCHER=y
+# media: the Video app decodes with the FFmpeg libraries (LGPL build; the
+# ffmpeg CLI tool is not needed in the image)
+BR2_PACKAGE_FFMPEG=y
+# BR2_PACKAGE_FFMPEG_FFMPEG is not set
+BR2_PACKAGE_FFMPEG_SWSCALE=y

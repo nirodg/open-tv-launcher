@@ -3,7 +3,7 @@
 OTV_LAUNCHER_VERSION = 0.1
 OTV_LAUNCHER_SITE = $(BR2_EXTERNAL_OTV_PATH)/../src/launcher
 OTV_LAUNCHER_SITE_METHOD = local
-OTV_LAUNCHER_DEPENDENCIES = otv-gateway
+OTV_LAUNCHER_DEPENDENCIES = otv-gateway ffmpeg
 
 OTV_UI_DIR := $(BR2_EXTERNAL_OTV_PATH)/../src/ui
 OTV_ASSETS_DIR := $(BR2_EXTERNAL_OTV_PATH)/../assets
@@ -15,7 +15,8 @@ define OTV_LAUNCHER_BUILD_CMDS
 			-I$(OTV_UI_DIR) -I$(@D) -I$(STAGING_DIR)/usr/include; \
 	done
 	$(TARGET_CC) $(TARGET_LDFLAGS) $(@D)/obj/*.o -o $(@D)/otv-launcher \
-		-L$(STAGING_DIR)/usr/lib -lgateway -ldrm -lm
+		-L$(STAGING_DIR)/usr/lib -lgateway -ldrm \
+		-lavformat -lavcodec -lswscale -lavutil -lm
 endef
 
 define OTV_LAUNCHER_INSTALL_TARGET_CMDS

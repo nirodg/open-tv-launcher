@@ -3,6 +3,7 @@
  * system call; everything device-shaped stays behind this file. */
 #define _GNU_SOURCE
 #include "sys.h"
+#include "media.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -1300,16 +1301,22 @@ static void vid_scan_dir(const char *dir, const char *folder)
 		localtime_r(&st.st_mtime, &tmv);
 		strftime(v->date, sizeof v->date, "%-d %b %Y", &tmv);
 
-		/* duration sidecar */
-		char durp[288];
-		snprintf(durp, sizeof durp, "%.*s.dur",
-			 (int)(strlen(v->path) - 4), v->path);
-		FILE *f = fopen(durp, "r");
-		if (f) {
-			int d = 0;
-			if (fscanf(f, "%d", &d) == 1 && d > 0)
-				v->dur = d;
-			fclose(f);
+		/* duration: probe the container (media.c), .dur sidecar
+		 * as a fallback for probe failures */
+		double d = media_probe_duration(v->path);
+		if (d > 0) {
+			v->dur = (int)d;
+		} else {
+			char durp[288];
+			snprintf(durp, sizeof durp, "%.*s.dur",
+				 (int)(strlen(v->path) - 4), v->path);
+			FILE *f = fopen(durp, "r");
+			if (f) {
+				int dd = 0;
+				if (fscanf(f, "%d", &dd) == 1 && dd > 0)
+					v->dur = dd;
+				fclose(f);
+			}
 		}
 		if (!v->dur)
 			v->dur = 30;

@@ -18,7 +18,8 @@
 - [x] Task 14c: Video app 1:1 with the updated prototype (tabs, folders, network shares, prefs, resume dialog, hold-OK menu, info view, updated player: auto-hide, seek bar, subtitles/speed/zoom pills, up-next)
 - [x] Task 14d: pointer input end-to-end — virtio-tablet on both run targets, evdev ABS decoding, hover-focus / click-activate / right-click-options in the engine, clickable seek bar; os/tools/mouse.py drives it headless via QMP input-send-event (HMP mouse_move does NOT deliver under -display none)
 - [ ] Task 15: GPU render backend `kms-gles2` (GBM/EGL behind gw_display; QEMU: virtio-gpu venus/virgl + guest Mesa) — optional per device.conf
-- [ ] Task 16: real media backend: video decode + audio output for the Video app (gateway V4L2/ALSA interfaces; QEMU audio via `-audiodev`)
+- [x] Task 16 (video half): real decode in the player — FFmpeg libs (LGPL) in the image, ui/media.c decodes to BGRA, keyframe seeks, container-probed durations, 60 s sample
+- [ ] Task 16 (audio half): audio output backend (ALSA/gateway; QEMU `-audiodev`) — the player decodes video only for now
 - [ ] Task 17: on-screen keyboard (InputMethodService-equivalent) — unblocks play-a-link, add-network-share, rename, custom device name
 
 ## Checkpoints

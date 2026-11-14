@@ -112,9 +112,16 @@ app — the prototype is the behaviour source of truth):
   with knob (click anywhere on it to seek), subtitles pill, speed ×, picture
   size (Fit/Fill/Original), up-next card, back-10 / play / fwd-N / next.
   D-pad: ◀ ▶ seek, OK pause, Back returns (position saved → Continue watching).
+- **Real playback**: the player decodes with the FFmpeg libraries
+  (`ui/media.c`: libavformat/avcodec/swscale → BGRA frames, backward seeks
+  jump to the keyframe). Durations come from the container; the sample
+  promo.mp4 is 60 s. Audio is deferred to the audio backend (device.conf
+  `[audio] backend = null`) — the track exists in the file but is not played.
 - **Input**: D-pad AND mouse — hover moves focus, click activates, right-click
-  opens options, the seek bar is clickable. Apps that are NOT implemented yet
-  render gray-ish icons everywhere and still politely defer when opened.
+  opens options, the seek bar is clickable. The default focus on entering the
+  app is the first content item (tabs are reachable with ▲), matching the
+  prototype. Apps that are NOT implemented yet render gray-ish icons
+  everywhere and still politely defer when opened.
 
 ## Fast UI iteration (host, no QEMU)
 

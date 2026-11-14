@@ -15,7 +15,7 @@ CC ?= gcc
 CFLAGS := -std=c11 -O2 -Wall -Wextra -Wno-unused-parameter \
 	  -MMD -MP \
 	  -I$(SRC)/ui -I$(SRC)/launcher -I$(SRC)/gateway/include
-LDLIBS := -lm
+LDLIBS := -lm -lavformat -lavcodec -lswscale -lavutil
 
 UI_SRC := $(wildcard $(SRC)/ui/*.c)
 LAUNCHER_SRC := $(wildcard $(SRC)/launcher/*.c)
