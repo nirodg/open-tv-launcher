@@ -14,5 +14,16 @@ ffmpeg -y -hide_banner -loglevel error \
 	-pix_fmt yuv420p -c:a aac -b:a 48k -shortest -movflags +faststart \
 	"$OUT/internal/promo.mp4"
 
+# duration sidecar + pre-rendered filmstrip (12 fps → 36 frames in a 6×6
+# grid): the QEMU Video app "plays" this strip — real decode lands with the
+# media backend (no codec deps in the OS image yet).
+echo 3 > "$OUT/internal/promo.dur"
+ffmpeg -y -hide_banner -loglevel error \
+	-i "$OUT/internal/promo.mp4" \
+	-vf "fps=12,scale=480:270,tile=6x6" -frames:v 1 -q:v 4 \
+	"$OUT/internal/promo.jpg"
+
 cp "$OUT/internal/promo.mp4" "$OUT/external/promo.mp4"
-ls -la "$OUT/internal/promo.mp4" "$OUT/external/promo.mp4"
+cp "$OUT/internal/promo.dur" "$OUT/external/promo.dur"
+cp "$OUT/internal/promo.jpg" "$OUT/external/promo.jpg"
+ls -la "$OUT/internal/" "$OUT/external/"

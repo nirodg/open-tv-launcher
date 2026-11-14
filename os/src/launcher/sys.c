@@ -5,6 +5,11 @@
 #include "sys.h"
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <time.h>
 
 /* ── state tables ──────────────────────────────────────────────────────── */
 typedef struct { const char *k; const char *v; } SStr;
@@ -397,24 +402,24 @@ int app_hash(const char *s)
 }
 
 static const App launch[] = {
-	{ "video", "Video", "play", "red", "Watch", NULL, NULL, 0, 0, 0 },
-	{ "movies", "Movies & Series", "film", "slate", "Watch", NULL, NULL, 0, 0, 0 },
-	{ "music", "Music", "music", "violet", "Listen", NULL, NULL, 0, 0, 0 },
-	{ "livetv", "Live TV", "tv", "mint", "Watch", "Tuner & IPTV", "tv:guide", 0, 0, 0 },
-	{ "browser", "Browser", "globe", "sky", "Tools", NULL, NULL, 0, 0, 0 },
-	{ "files", "Files", "folder", "sun", "Tools", NULL, NULL, 0, 0, 0 },
-	{ "gallery", "Gallery", "image", "rose", "Watch", NULL, NULL, 0, 0, 0 },
-	{ "games", "Games", "gamepad", "blue", "Play", NULL, NULL, 0, 0, 0 },
-	{ "podcasts", "Podcasts", "headphones", "violet", "Listen", NULL, NULL, 0, 0, 0 },
-	{ "weather", "Weather", "cloud", "sky", "Tools", NULL, NULL, 0, 0, 0 },
-	{ "notes", "Notes", "notes", "mint", "Tools", NULL, NULL, 0, 0, 0 },
-	{ "store", "Store", "bag", "store", "System", NULL, "store:discover", 0, 0, 0 },
-	{ "remoteapp", "Remote", "remote", "slate", "System", NULL, "settings:remotes", 0, 0, 0 },
-	{ "speed", "Speed Test", "pulse", "blue", "Tools", NULL, NULL, 0, 0, 0 },
-	{ "cast", "Screen Cast", "cast", "rose", "Tools", NULL, NULL, 0, 0, 0 },
-	{ "settings", "Settings", "settings", "slate", "System", NULL, "settings:picture", 0, 0, 0 },
-	{ "hdmi1", "HDMI 1", "monitor", "slate", "System", NULL, NULL, 1, 1, 0 },
-	{ "hdmi2", "HDMI 2", "monitor", "slate", "System", NULL, NULL, 1, 1, 0 },
+	{ "video", "Video", "play", "red", "Watch", NULL, NULL, 0, 0, 0, 1 },
+	{ "movies", "Movies & Series", "film", "slate", "Watch", NULL, NULL, 0, 0, 0, 0 },
+	{ "music", "Music", "music", "violet", "Listen", NULL, NULL, 0, 0, 0, 0 },
+	{ "livetv", "Live TV", "tv", "mint", "Watch", "Tuner & IPTV", "tv:guide", 0, 0, 0, 0 },
+	{ "browser", "Browser", "globe", "sky", "Tools", NULL, NULL, 0, 0, 0, 0 },
+	{ "files", "Files", "folder", "sun", "Tools", NULL, NULL, 0, 0, 0, 0 },
+	{ "gallery", "Gallery", "image", "rose", "Watch", NULL, NULL, 0, 0, 0, 0 },
+	{ "games", "Games", "gamepad", "blue", "Play", NULL, NULL, 0, 0, 0, 0 },
+	{ "podcasts", "Podcasts", "headphones", "violet", "Listen", NULL, NULL, 0, 0, 0, 0 },
+	{ "weather", "Weather", "cloud", "sky", "Tools", NULL, NULL, 0, 0, 0, 0 },
+	{ "notes", "Notes", "notes", "mint", "Tools", NULL, NULL, 0, 0, 0, 0 },
+	{ "store", "Store", "bag", "store", "System", NULL, "store:discover", 0, 0, 0, 0 },
+	{ "remoteapp", "Remote", "remote", "slate", "System", NULL, "settings:remotes", 0, 0, 0, 0 },
+	{ "speed", "Speed Test", "pulse", "blue", "Tools", NULL, NULL, 0, 0, 0, 0 },
+	{ "cast", "Screen Cast", "cast", "rose", "Tools", NULL, NULL, 0, 0, 0, 0 },
+	{ "settings", "Settings", "settings", "slate", "System", NULL, "settings:picture", 0, 0, 0, 1 },
+	{ "hdmi1", "HDMI 1", "monitor", "slate", "System", NULL, NULL, 1, 1, 0, 0 },
+	{ "hdmi2", "HDMI 2", "monitor", "slate", "System", NULL, NULL, 1, 1, 0, 0 },
 };
 
 /* store catalogue; `installed` flips at runtime via the appst copy below */
@@ -1246,4 +1251,74 @@ void toast_change(const char *key)
 		ic = "power";
 	}
 	if (m) toast(m, ic);
+}
+
+/* ── video library: real clips from the device's storage ──────────────── */
+/* The device description names the storage mounts (device.conf). The Video
+ * app lists every .mp4 found there; a "<name>.dur" sidecar carries the
+ * duration (our sample generator writes it), and a "<name>.jpg" filmstrip
+ * carries pre-rendered preview frames for the player (QEMU has no video
+ * decode yet — the real media backend replaces this later). */
+static VidClip vids[24];
+static int nvids;
+static bool vids_init;
+
+static void vid_scan_dir(const char *dir)
+{
+	DIR *d = opendir(dir);
+	if (!d)
+		return;
+	struct dirent *de;
+	while ((de = readdir(d)) && nvids < (int)(sizeof vids / sizeof *vids)) {
+		const char *n = de->d_name;
+		size_t ln = strlen(n);
+		if (ln < 5 || strcasecmp(n + ln - 4, ".mp4") != 0)
+			continue;
+		VidClip *v = &vids[nvids];
+		memset(v, 0, sizeof *v);
+		snprintf(v->path, sizeof v->path, "%s/%s", dir, n);
+
+		/* title: filename without the extension, separators as spaces */
+		char base[96];
+		snprintf(base, sizeof base, "%.*s", (int)(ln - 4), n);
+		for (char *p = base; *p; p++)
+			if (*p == '-' || *p == '_' || *p == '.')
+				*p = ' ';
+		snprintf(v->title, sizeof v->title, "%s", base);
+
+		struct stat st;
+		if (stat(v->path, &st) != 0)
+			continue;
+		v->size = st.st_size;
+		struct tm tmv;
+		localtime_r(&st.st_mtime, &tmv);
+		strftime(v->date, sizeof v->date, "%-d %b %Y", &tmv);
+
+		/* duration sidecar */
+		char durp[288];
+		snprintf(durp, sizeof durp, "%.*s.dur",
+			 (int)(strlen(v->path) - 4), v->path);
+		FILE *f = fopen(durp, "r");
+		if (f) {
+			int d = 0;
+			if (fscanf(f, "%d", &d) == 1 && d > 0)
+				v->dur = d;
+			fclose(f);
+		}
+		if (!v->dur)
+			v->dur = 30;
+		nvids++;
+	}
+	closedir(d);
+}
+
+VidClip *vid_clips(int *n)
+{
+	if (!vids_init) {
+		vids_init = true;
+		vid_scan_dir(otv_device_str("storage", "internal", "/media/internal"));
+		vid_scan_dir(otv_device_str("storage", "external", "/media/external"));
+	}
+	*n = nvids;
+	return vids;
 }

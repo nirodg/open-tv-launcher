@@ -1487,4 +1487,4 @@ bool sub_active(void) { return set_ctx()->nsub > 0; }
 
 void sub_close(void) { set_onback(); }
 
-const Screen settings_screen = { "settings", settings_build, settings_draw };
+const Screen settings_screen = { "settings", settings_build, settings_draw, settings_onback };

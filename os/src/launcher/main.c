@@ -40,14 +40,16 @@ static void standby_draw(gw_surface *s, Layer *L, float now)
 	       tx("Standby · press any key to turn on"), (Col){ 255, 255, 255, 64 });
 }
 
-static const Screen boot_screen = { "boot", empty_build, boot_draw };
-static const Screen standby_screen = { "standby", empty_build, standby_draw };
+static const Screen boot_screen = { "boot", empty_build, boot_draw, NULL, NULL };
+static const Screen standby_screen = { "standby", empty_build, standby_draw, NULL, NULL };
 extern const Screen home_screen;    /* screen_home.c */
 extern const Screen apps_screen;    /* screen_apps.c */
 extern const Screen settings_screen; /* screen_settings.c */
+extern const Screen video_screen;   /* screen_video.c */
 
 static const Screen *const SCREENS[] = {
-	&boot_screen, &standby_screen, &home_screen, &apps_screen, &settings_screen,
+	&boot_screen, &standby_screen, &home_screen, &apps_screen,
+	&settings_screen, &video_screen,
 };
 
 /* ── screen registry (ui.h) ────────────────────────────────────────────── */

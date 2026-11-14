@@ -99,6 +99,12 @@ Grad app_grad(const char *g)
 	return G_SLATE;
 }
 
+/* App-aware gradient: not-yet-implemented apps render gray-ish. */
+Grad app_grad2(const App *a)
+{
+	return a->live ? app_grad(a->g) : G_GRAY;
+}
+
 void glass(gw_surface *s, R r, float rad)
 {
 	gfx_rrect(s, r, rad, C_GLASS);
@@ -145,7 +151,7 @@ void tile_draw(gw_surface *s, FNode *f, const App *a)
 		float cx = rcx(r), cy = rcy(r);
 		r = rrect(cx - r.w * sc / 2, cy - r.h * sc / 2, r.w * sc, r.h * sc);
 	}
-	gfx_rrect_g2(s, r, 28, app_grad(a->g));
+	gfx_rrect_g2(s, r, 28, app_grad2(a));
 	Col ln = { 255, 255, 255, 30 };
 	gfx_ring(s, r, 28, 1, ln);
 	/* glyph box 64 r18 white22, icon 34 */
@@ -175,7 +181,7 @@ void pin_draw(gw_surface *s, FNode *f, const App *a, const char *label_override)
 	}
 	R ib = rchild(r, r.w / 2 - 22, 22, 44, 44);
 	if (a && !a->input) {
-		gfx_rrect_g2(s, ib, 14, app_grad(a->g));
+		gfx_rrect_g2(s, ib, 14, app_grad2(a));
 		icon_draw(s, a->glyph, rcx(ib), rcy(ib), 24, C_TEXT);
 	} else {
 		Col bx = { 255, 255, 255, 36 };
@@ -203,7 +209,7 @@ void appicon_draw(gw_surface *s, FNode *f, const App *a)
 	}
 	Col shadow = { 0, 0, 0, 40 };
 	gfx_rrect(s, rchild(r, 0, 10, r.w, r.h), 40, shadow);
-	gfx_rrect_g2(s, r, 40, app_grad(a->g));
+	gfx_rrect_g2(s, r, 40, app_grad2(a));
 	Col ln = { 255, 255, 255, 36 };
 	gfx_ring(s, r, 40, 1, ln);
 	icon_draw(s, a->glyph, rcx(r), rcy(r), 60, C_TEXT);
@@ -353,7 +359,7 @@ static void lead_draw(gw_surface *s, R r, const SRow *row)
 		const App *a = app_info(row->icon + 4);
 		if (a) {
 			R ab = rchild(r, 0, r.h / 2 - 22, 44, 44);
-			gfx_rrect_g2(s, ab, 12, app_grad(a->g));
+			gfx_rrect_g2(s, ab, 12, app_grad2(a));
 			icon_draw(s, a->glyph, rcx(ab), rcy(ab), 22, C_TEXT);
 		}
 		return;

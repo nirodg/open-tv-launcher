@@ -31,6 +31,7 @@ void *f18(void), *f20(void), *f21(void), *f22(void), *f23(void), *f24(void),
 /* gradient at t (0..1), for dots and swatches */
 Col grad_at(Grad g, float t);
 Grad app_grad(const char *g);
+Grad app_grad2(const App *a); /* live apps keep their colour, others gray */
 
 /* glass panel: white 8% fill + white 14% 1px border, radius rad */
 void glass(gw_surface *s, R r, float rad);

@@ -5,6 +5,7 @@
  * notes the screen that replaces it in the real build. */
 #define _GNU_SOURCE
 #include "drawui.h"
+#include "screen_video.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -66,6 +67,10 @@ static void open_app(const char *id)
 			return;
 		}
 		later(id, a); /* tv:guide / store:discover */
+		return;
+	}
+	if (!strcmp(id, "video")) {
+		scene_go("video", ""); /* real app screen (task 14) */
 		return;
 	}
 	later(id, a); /* the app's own UI is a later build */
@@ -604,6 +609,9 @@ void act_fire(const char *act)
 	}
 
 	if (eq(cmd, "open")) { open_app(arg); return; }
+	if (eq(cmd, "vopen")) { video_open_clip(atoi(arg)); return; }
+	if (eq(cmd, "vplay")) { video_toggle_play(); return; }
+	if (eq(cmd, "vseek")) { video_seek(atoi(arg)); return; }
 	if (eq(cmd, "go")) {
 		if (eq(arg, "apps") || eq(arg, "settings")) {
 			scene_go(arg, "");

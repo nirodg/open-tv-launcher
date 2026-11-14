@@ -74,3 +74,15 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   and /media/external/promo.mp4 (os/tools/make-samples.sh, deterministic ffmpeg testsrc2, 134 KB each) for the later
   Video app (task 14). Verified on both guests (device lines in boot log; x86 UI up in ~8 s).
 - Pending: Video app real impl (task 14), kms-gles2 GPU backend (task 15).
+- 2026-11-14 (Video app + app liveness + .app list): the Video app is a real screen now — home (Continue watching shelf +
+  All videos grid from the device.conf storage dirs; real file scan: name/size/mtime + .dur sidecar) and a player
+  (filmstrip "playback": 12 fps pre-rendered strip via stb_image [vendored, JPEG enabled], progress, OK pause, ◀ ▶ seek,
+  Back saves the position → Continue watching). Engine: Screen grew optional back()/tick() hooks (settings migrated;
+  scene_mark_dirty), gw_now() gateway clock — PROCESS-RELATIVE like now_sec (float32 of absolute monotonic = garbage
+  deltas, same bug class as before). App liveness: App.live flag; app_grad2() renders not-implemented apps GRAY-ISH
+  everywhere (home tiles, pins, apps grid, Settings › Apps rows); live = video + settings. Every app is a ".app" entry
+  in Settings › Apps (already: From the Store + Built in groups, icon+size, sub:app info page — Android-style).
+  GOTCHA fixed: os/src/Makefile had NO header deps — changing ui.h (Screen/App structs) left stale .o files with old
+  layouts → wild function-pointer jump/segfault under -O2 (rodata address as code!). Now -MMD -MP + -include *.d.
+  Verified: host tours (gray apps grid, player, pause, back) + x86 guest (Video opens from home, plays promo.mp4,
+  Apps page gray/colored) + ARM guest (player). Screenshots 20261114-1446/1450/1451. Real decode+audio = task 16.

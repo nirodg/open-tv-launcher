@@ -2,6 +2,7 @@
  * blits, icons. Same primitives the future GLES2 backend will expose. */
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
+#define STBI_ONLY_JPEG
 #include "ui.h"
 #include "stb/stb_image.h"
 

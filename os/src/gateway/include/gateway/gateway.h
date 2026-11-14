@@ -42,6 +42,9 @@ void gw_input_close(void);
 /* Waits up to timeout_ms; returns number of events stored (0 = timeout). */
 int  gw_input_poll(gw_input_event *ev, int max, int timeout_ms);
 
+/* ── Clock (monotonic, process-relative) ─────────────────────────────── */
+float gw_now(void);                  /* seconds since process start */
+
 /* ── Host dev-iteration hooks (host-only backends implement these; the OS
  *    build links stubs from main.c — see gateway/hostdev/) ────────────── */
 void host_tick(int ms);              /* advance the scripted-input clock */
@@ -51,6 +54,9 @@ void host_shot(const char *name);    /* dump current frame to name.argb */
 void gw_time_parts(int *h, int *m, int *s, int *wd, int *day, int *mon, int *year);
 const char *gw_wd_name(int wd);      /* "Sunday" … */
 const char *gw_mon_name(int mon);    /* "January" … */
+
+/* monotonic seconds since process start (the engine's clock) */
+float gw_now(void);
 
 #include "gateway/device.h"
 

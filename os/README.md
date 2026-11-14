@@ -79,8 +79,22 @@ gateway backends it names. The launcher logs the whole description at startup
 ## Samples
 
 `media/internal/promo.mp4` and `media/external/promo.mp4` (same 3 s test clip)
-ship in the QEMU images so the later Video app can read them from both
-storages. Regenerate with `os/tools/make-samples.sh` (ffmpeg, deterministic).
+ship in the QEMU images so the Video app can read them from both storages.
+Each clip has a `<name>.dur` sidecar (duration, seconds) and a `<name>.jpg`
+filmstrip (12 fps frame grid) that the player "plays" — QEMU has no video
+decode in the image yet; the real media backend (decode + audio) is the
+follow-up and replaces the filmstrip path. Regenerate everything with
+`os/tools/make-samples.sh` (ffmpeg, deterministic).
+
+## The Video app
+
+A real screen (task 14, first slice): opens from Home/the apps grid with its
+colour icon; lists every `.mp4` found in the device's storage dirs; Continue
+watching keeps positions while the app runs; the player shows the clip's
+filmstrip fullscreen with progress, back-10 / play-pause / fwd-30 (D-pad:
+OK toggles, ◀ ▶ seek, Back returns). Apps that are NOT implemented yet render
+gray-ish icons everywhere (home tiles, pins, apps grid, Settings › Apps) and
+still politely defer when opened — implemented apps keep their colour.
 
 ## Fast UI iteration (host, no QEMU)
 

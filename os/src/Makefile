@@ -13,6 +13,7 @@ BUILD := $(SRC)/../build/host
 
 CC ?= gcc
 CFLAGS := -std=c11 -O2 -Wall -Wextra -Wno-unused-parameter \
+	  -MMD -MP \
 	  -I$(SRC)/ui -I$(SRC)/launcher -I$(SRC)/gateway/include
 LDLIBS := -lm
 
@@ -34,6 +35,8 @@ $(BIN): $(OBJ)
 $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+-include $(OBJ:.o=.d)
 
 run: $(BIN)
 	$(BIN)

@@ -6,6 +6,8 @@
 #define OTV_SYS_H
 
 #include "ui.h"
+#include "gateway/gateway.h"
+#include "gateway/device.h"
 
 /* ── wifi network mock (prototype DEV.nets) ───────────────────────────── */
 typedef struct { const char *ssid, *sec; int sig, ghz; bool saved; } Net;
@@ -16,6 +18,11 @@ const char *ipaddr(void);
 const char *sig_word(int sig);    /* Weak/Fair/Good/Strong */
 const char *net_desc(int i);      /* "Connected · Good signal" etc */
 const char *net_sub(int i);       /* "Open network · WPA2" style */
+
+/* ── video library (real files from the device's storage dirs) ─────────── */
+typedef struct { char path[256]; char title[96]; char date[24];
+		 long size; int dur; int pos; } VidClip;
+VidClip *vid_clips(int *n);       /* lazily scanned; do not mutate title/path */
 
 /* ── bluetooth mock ────────────────────────────────────────────────────── */
 typedef struct { const char *id, *name, *kind; int batt; bool conn; } BtDev;

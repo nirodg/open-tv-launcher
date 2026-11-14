@@ -13,8 +13,10 @@
 - [ ] Task 11: Commits, push branch os-build, open PR (no merge), update memory.md
 - [x] Task 12: x86_64 target boot smoke (KVM fast-dev path)
 - [x] Task 13: Device description file (`/etc/otv/device.conf`) + render-backend switch (kms-dumb default, kms-gles2 declared) + sample promo.mp4 in both storages
-- [ ] Task 14: Video app (real impl, per mockups): read `storage.internal`/`storage.external` from device.conf, list + play mp4s (Media3-style pipeline later; software decode first), `/media/*/promo.mp4` as first content
+- [x] Task 14: Video app, first slice: real screen (home + player), lists .mp4s from device.conf storage dirs, Continue watching positions, filmstrip playback (12 fps pre-rendered strip, no codec deps), OK play/pause, ◀ ▶ seek, Back. Real decode+audio = task 16.
+- [x] Task 14b: app liveness — implemented apps keep their colour icon (video, settings); not-implemented apps render gray-ish everywhere (home, pins, apps grid, Settings › Apps) and defer politely; every app is a ".app" entry in Settings › Apps (built-in + store, icon/size, app-info sub-page — Android-style)
 - [ ] Task 15: GPU render backend `kms-gles2` (GBM/EGL behind gw_display; QEMU: virtio-gpu venus/virgl + guest Mesa) — optional per device.conf
+- [ ] Task 16: real media backend: video decode + audio output for the Video app (gateway V4L2/ALSA interfaces; QEMU audio via `-audiodev`)
 
 ## Checkpoints
 - [x] Phase 1: ARM target boots to shell

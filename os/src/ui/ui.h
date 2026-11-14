@@ -63,6 +63,9 @@ typedef struct { uint8_t r1, g1, b1, r2, g2, b2; } Grad;
 #define G_ROSE   ((Grad){ 255, 125, 168, 194, 58, 120 })
 #define G_SKY    ((Grad){ 94, 208, 255, 35, 133, 214 })
 #define G_STORE  ((Grad){ 91, 140, 255, 124, 92, 255 })
+/* "not implemented yet" apps: desaturated gray — the icon still shows, the
+ * app politely defers (Open: toast). Implemented apps keep their colour. */
+#define G_GRAY   ((Grad){ 122, 128, 142, 62, 66, 78 })
 
 /* ── Global draw state ─────────────────────────────────────────────────── */
 void gfx_set_alpha(float m);   /* multiplies every alpha (screen-enter fade) */
@@ -136,6 +139,10 @@ typedef struct Screen {
 	const char *id;
 	void (*build)(Layer *L, const char *param);
 	void (*draw)(gw_surface *s, Layer *L, float now);
+	/* optional hooks: consume Back inside the screen (internal views) and
+	 * per-tick work (self-driven animations) */
+	bool (*back)(void);
+	void (*tick)(float now);
 } Screen;
 void screens_register(const Screen *const *list, int n); /* in main.c */
 const Screen *screen_by_id(const char *id);
@@ -147,9 +154,9 @@ void scene_tick(float now);
 void scene_draw(gw_surface *s, float now);
 bool scene_dirty(float now, float *next_wake);
 void scene_go(const char *id, const char *param);
-void scene_back(void);
-void scene_home(void);
+void scene_back(void);void scene_home(void);
 void scene_refresh(void);
+void scene_mark_dirty(void); /* force the next frame to redraw */
 Layer *scene_top(void);
 bool scene_in_layers(void);
 void scene_effects(gw_surface *s); /* backlight dim / night light / colour temp */
@@ -225,7 +232,8 @@ void toggle_key(const char *key);
 void toast_change(const char *key);          /* CHANGE_TOAST subset */
 
 /* app catalogue (sys.c) */
-typedef struct { const char *id, *name, *glyph, *g, *cat, *sub; const char *go; bool input, hidden, store; } App;
+typedef struct { const char *id, *name, *glyph, *g, *cat, *sub; const char *go;
+		 bool input, hidden, store, live; } App;
 const App *app_info(const char *id);
 const App *const *app_all(int *n);           /* LAUNCH + installed store apps */
 const App *const *app_installed_store(int *n);

@@ -42,11 +42,6 @@ static const char *mem_get(const char *skey)
 	return NULL;
 }
 
-static void screen_key(char *out, int cap)
-{
-	snprintf(out, cap, "%s|%s", cur_id, cur_p);
-}
-
 /* ── toast / hud ───────────────────────────────────────────────────────── */
 static struct { char msg[128]; char icon[24]; float until; bool on; } gtoast;
 static float hud_until = 0;
@@ -349,7 +344,7 @@ void scene_back(void)
 		return;
 	}
 	const Screen *S = screen_by_id(cur_id);
-	if (S && !strcmp(cur_id, "settings") && settings_onback())
+	if (S && S->back && S->back())
 		return;
 	if (!nhist) {
 		if (strcmp(cur_id, "home"))
@@ -368,7 +363,7 @@ void scene_home(void)
 	lpop_all();
 	nhist = 0;
 	snprintf(cur_id, sizeof(cur_id), "home");
-	snprintf(cur_p, sizeof(cur_p), "");
+	cur_p[0] = 0;
 	build_screen(true);
 	lrestore(scr, mem_get("home|"));
 }
@@ -506,10 +501,16 @@ void scene_tick(float now)
 		hud_on = false;
 		g_dirty = true;
 	}
+	/* per-screen tick (self-driven animations, e.g. the player) */
+	const Screen *S = screen_by_id(cur_id);
+	if (S && S->tick)
+		S->tick(now);
 	if (enter_t0 >= 0 && now - enter_t0 < 0.3f)
 		g_dirty = true;
 	sys_tick(now); /* wifi/bt/update busy state machines (sys.c) */
 }
+
+void scene_mark_dirty(void) { g_dirty = true; }
 
 bool scene_dirty(float now, float *next_wake)
 {
