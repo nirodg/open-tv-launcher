@@ -111,7 +111,16 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   writes the seed to usr/share/otv/samples (one copy). Verified on x86: drop → appears on app entry,
   app-delete → gone on the host, reboot → everything persists, volume mounts every boot.
 - Pending: audio backend (task 16 remainder), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
-- 2026-11-16 (porting guide): docs/PORTING_GUIDELINE.md — the ARM port doc (requirements table, defconfig/kernel/overlay
+- 2026-11-16 (port-bringup tooling): os/tools/portdoctor — the deterministic on-device checker (busybox-sh, reads
+  sysfs/procfs only: /proc//sys//tmp, RAM, any /dev/dri/cardN + bound driver + connector modes, key-capable evdev
+  devices, device.conf storage paths, launcher running; PASS/WARN/FAIL with a guideline §-referenced fix hint per
+  failure, exit 1 until clean). Shipped in the image at /usr/bin/portdoctor (both targets). VERIFIED on the real
+  x86 guest over an interactive serial socket (login root → run → 13 pass / 0 warn / 0 fail) and on the host
+  fail-path. .cursor/agents/port-bringup.md — the single port bring-up AGENT definition (role + input/output contract,
+  portdoctor-first method, line→action table, SoC→DRM-driver table, hard rules, why-single-agent). 
+  .cursor/skills/port-bringup/SKILL.md — the same knowledge as a loadable skill. No multi-agent split until 2–3 real
+  ports exist. Guideline §0/§5/§8 + os/README lead with portdoctor; AGENTS.md §11 names the agent (AGENTS.md itself
+  remains uncommitted — maintainer's call).
   recipe, gateway expectations incl. every trap we hit: possible_crtts bitmask, page flips, evdev drain, inittab id,
   S00mount/proc, process-relative clock; symptom→cause table; honest "not ported yet" list; printable checklist).
   Companion fix: S30hostshare/S35media now exit instantly on real hardware ([ -d /sys/bus/virtio/devices ] || exit 0) —

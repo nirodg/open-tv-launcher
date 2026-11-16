@@ -31,6 +31,15 @@ wrong — file an issue instead.
 
 ## 0. What your device needs (the whole list)
 
+**Start with `portdoctor`.** The OS image ships it at `/usr/bin/portdoctor`;
+on any other Linux on your board, copy `os/tools/portdoctor` over and run
+`sh portdoctor`. It checks everything in the table below deterministically,
+prints PASS/FAIL with a fix hint per failure, and exits non-zero until the
+board is ready — agents misread hardware, a script doesn't. The bring-up is
+an agent job: `.cursor/agents/port-bringup.md` (role + contract) drives it,
+`.cursor/skills/port-bringup/` carries the knowledge, and both consume
+portdoctor's output.
+
 | Requirement | Why | How to check |
 |---|---|---|
 | ARMv7 or ARM64 | the toolchains we test | `uname -m` on the device |
@@ -257,6 +266,10 @@ otv: page flip OK (double-buffered)
 
 ## 5. Testing ladder
 
+Step zero on real hardware: `sh /usr/bin/portdoctor` (shipped in the image)
+— it must report all-PASS before anything else matters. Its hints point at
+the sections of this document.
+
 1. **QEMU first.** Port your *kernel config* against
    `make -C os run-arm` before touching hardware; it catches display/input
    regressions in minutes. The QEMU target is the reference aarch64 port —
@@ -317,6 +330,7 @@ works, what is mocked, and what is missing — that's the project's standard
 ## 8. Checklist (print this)
 
 ```
+[ ] portdoctor: all PASS (run /usr/bin/portdoctor on the device)
 [ ] /dev/dri/card0 exists; modetest shows a connector with modes
 [ ] /dev/input/event* exists; evtest shows your remote's keys
 [ ] board defconfig with the Open TV block (FFMPEG + SWSCALE!)

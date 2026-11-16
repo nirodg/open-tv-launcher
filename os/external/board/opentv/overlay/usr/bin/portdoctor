@@ -1,0 +1,162 @@
+#!/bin/sh
+# portdoctor — deterministic Open TV port bring-up checks.
+#
+# Runs ON the device (any Linux; the Open TV image ships it at
+# /usr/bin/portdoctor). Reads sysfs/procfs only — no side effects beyond a
+# /tmp touch test. Exit 0 = every critical check passed.
+#
+# Interpretation: every FAIL line carries the fix hint; the full reasoning
+# lives in docs/PORTING_GUIDELINE.md (§ references below). Agents read this
+# output instead of guessing at hardware.
+
+PASS=0; FAIL=0; WARN=0; RC=0
+ok()   { echo "  PASS  $1"; PASS=$((PASS + 1)); }
+bad()  { echo "  FAIL  $1"; FAIL=$((FAIL + 1)); RC=1; }
+warn() { echo "  WARN  $1"; WARN=$((WARN + 1)); }
+hint() { echo "        fix: $1"; }
+
+echo "== Open TV portdoctor =="
+model=$(cat /sys/firmware/devicetree/base/model 2>/dev/null)
+[ -n "$model" ] || model="unknown (no device tree — x86?)"
+echo "board: $model"
+echo "cpu:   $(uname -m), kernel $(uname -r)"
+echo
+
+echo "-- core filesystems --"
+if [ -r /proc/mounts ]; then
+	ok "/proc mounted"
+else
+	bad "/proc not mounted"
+	hint "ship S00mount (overlay) or run 'mount -a' from fstab — guideline §4"
+fi
+if [ -d /sys/class/drm ] || [ -d /sys/class/input ]; then
+	ok "/sys mounted"
+else
+	bad "/sys not mounted"
+	hint "CONFIG_SYSFS + mount sysfs — guideline §4"
+fi
+if (touch /tmp/.pd$$ && rm -f /tmp/.pd$$) 2>/dev/null; then
+	ok "/tmp writable"
+else
+	bad "cannot write /tmp"
+	hint "tmpfs on /tmp (fstab) or a writable rootfs"
+fi
+
+echo "-- memory (1080p UI needs ~128 MB) --"
+mem=$(awk '/^MemTotal/ {print $2}' /proc/meminfo 2>/dev/null)
+if [ -z "$mem" ]; then
+	warn "MemTotal unknown (/proc/meminfo unreadable)"
+elif [ "$mem" -ge 131072 ]; then
+	ok "RAM ${mem} kB (>= 128 MB)"
+elif [ "$mem" -ge 65536 ]; then
+	warn "RAM ${mem} kB — tight: fine at 720p; at 1080p drop the wallpaper cache"
+	hint "guideline §0 table"
+else
+	bad "RAM ${mem} kB (< 64 MB): the 1080p UI cannot run"
+fi
+
+echo "-- display (DRM/KMS, no GPU needed) --"
+CARD=$(ls /dev/dri/ 2>/dev/null | grep -E '^card[0-9]+$' | head -n 1)
+if [ -n "$CARD" ]; then
+	ok "/dev/dri/$CARD present"
+	drv=$(readlink "/sys/class/drm/$CARD/device/driver" 2>/dev/null)
+	if [ -n "$drv" ]; then
+		ok "DRM driver: ${drv##*/}"
+	else
+		bad "$CARD exists but no driver is bound"
+		hint "enable your SoC's DRM driver (guideline §2.2) and check 'dmesg | grep -i drm' for probe errors"
+	fi
+else
+	bad "no /dev/dri/card* at all"
+	hint "no DRM: kernel needs the SoC's DRM/KMS driver + CONFIG_DRM_KMS_HELPER — guideline §0/§2.2"
+fi
+
+nconn=0; non=0; nmode=0; best=""
+for c in /sys/class/drm/card[0-9]*-*; do
+	[ -d "$c" ] || continue
+	nconn=$((nconn + 1))
+	if [ "$(cat "$c/status" 2>/dev/null)" = "connected" ]; then
+		non=$((non + 1))
+		m=$(head -n 1 "$c/modes" 2>/dev/null)
+		if [ -n "$m" ]; then
+			nmode=$((nmode + 1))
+			best="$m"
+		fi
+	fi
+done
+if [ "$nconn" -eq 0 ]; then
+	warn "no connectors under /sys/class/drm"
+	hint "driver without connector sysfs? cross-check with 'modetest -c' from libdrm-tests"
+elif [ "$non" -gt 0 ]; then
+	ok "$non/$nconn connector(s) connected"
+	if [ "$nmode" -gt 0 ]; then
+		ok "best mode: $best"
+	else
+		bad "connected connector reports no modes"
+		hint "missing/broken EDID (common over LVDS/DSI) — the gateway synthesises 1080p60 as a fallback; fix the panel bridge if you can — guideline §3"
+	fi
+else
+	warn "no connector reports connected"
+	hint "headless is OK (the gateway drives the first connector anyway — find_output fallback, §3); a TV panel should report connected"
+fi
+
+echo "-- input (evdev: remote/keyboard, absolute pointer optional) --"
+nkbd=0
+for d in /sys/class/input/input*; do
+	[ -d "$d" ] || continue
+	caps=$(cat "$d/capabilities/key" 2>/dev/null)
+	case "$caps" in
+	*[1-9a-fA-F]*)
+		nkbd=$((nkbd + 1))
+		echo "        input: $(cat "$d/name" 2>/dev/null)"
+		;;
+	esac
+done
+if [ "$nkbd" -gt 0 ]; then
+	ok "$nkbd key-capable input device(s)"
+else
+	bad "no key-capable evdev device"
+	hint "CONFIG_INPUT_EVDEV + the IR receiver driver (IR_MESON/IR_ROCKCHIP/...) with a keymap emitting KEY_UP/DOWN/LEFT/RIGHT/ENTER — guideline §2.2"
+fi
+
+echo "-- Open TV specifics --"
+if [ -f /etc/otv/device.conf ]; then
+	ok "/etc/otv/device.conf present"
+	for key in internal external; do
+		p=$(sed -n "s/^$key *= *//p" /etc/otv/device.conf | head -n 1)
+		if [ -n "$p" ]; then
+			if [ -d "$p" ]; then
+				ok "storage.$key = $p (exists)"
+			else
+				warn "storage.$key = $p does not exist yet"
+				hint "mount the real volume there (S35media equivalent) — guideline §1"
+			fi
+		fi
+	done
+else
+	warn "no /etc/otv/device.conf — built-in defaults will be used"
+	hint "write the board's conf (guideline §1) — it is most of the port"
+fi
+
+if [ -x /usr/bin/otv-launcher ]; then
+	if pidof otv-launcher >/dev/null 2>&1; then
+		ok "otv-launcher is running"
+		echo "        verify on the serial console, in order:"
+		echo "        'otv: device <name>' -> 'display backend kms-dumb' -> 'page flip OK'"
+		echo "        anything else: guideline §5 symptom table"
+	else
+		warn "otv-launcher installed but not running (init will keep retrying)"
+		hint "look for 'otv: no display' on the console — usually a late DRM probe"
+	fi
+else
+	warn "otv-launcher not installed (this is not an Open TV image)"
+fi
+
+echo
+echo "result: $PASS pass, $WARN warn, $FAIL fail"
+if [ "$FAIL" -eq 0 ]; then
+	echo "board is ready for the bring-up ladder — guideline §5 (UI pass, then the 1-hour soak)"
+else
+	echo "fix the FAIL lines first (hints above; full reasoning in docs/PORTING_GUIDELINE.md)"
+fi
+exit $RC

@@ -6,6 +6,12 @@ ports the `prototype/index.html` behavior to real pixels. Milestone 1 runs under
 QEMU. **Bringing it up on real ARM hardware? Start at
 [../docs/PORTING_GUIDELINE.md](../docs/PORTING_GUIDELINE.md) — if the kernel
 has DRM/KMS + evdev, the port is mostly a defconfig and a device.conf.**
+The image ships `portdoctor` (`/usr/bin/portdoctor` on the guest) — run it
+on the device first: all-PASS means the board is ready for the bring-up
+ladder. The bring-up itself is an agent job:
+[.cursor/agents/port-bringup.md](../.cursor/agents/port-bringup.md) defines the
+role, `.cursor/skills/port-bringup/` its knowledge — both consume portdoctor's
+output.
 
 **This is the behavior/look reference chain:** `prototype/index.html` (behavior) →
 AGENTS.md §5 design tokens → `renders/launcher/*.png` (look).
