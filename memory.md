@@ -111,6 +111,11 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   writes the seed to usr/share/otv/samples (one copy). Verified on x86: drop → appears on app entry,
   app-delete → gone on the host, reboot → everything persists, volume mounts every boot.
 - Pending: audio backend (task 16 remainder), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
+- 2026-11-16 (MERGED): PR #1 → main (merge commit 43a2704). The os-build branch's 19 commits are now on main:
+  Buildroot base → gateway → UI toolkit → launcher → assets → external tree → host build → x86 KVM target →
+  device description + backend switch → double-buffered flips → Video app (1:1 + real FFmpeg decode) → mouse input →
+  software cursor → persistent /tmp/opentv volume → porting guideline → portdoctor + port-bringup agent. All verified
+  on QEMU aarch64 + x86_64 (host and guest), mouse- and D-pad-driven, zero crashes.
 - 2026-11-16 (port-bringup tooling): os/tools/portdoctor — the deterministic on-device checker (busybox-sh, reads
   sysfs/procfs only: /proc//sys//tmp, RAM, any /dev/dri/cardN + bound driver + connector modes, key-capable evdev
   devices, device.conf storage paths, launcher running; PASS/WARN/FAIL with a guideline §-referenced fix hint per
