@@ -3,7 +3,9 @@
 A minimal, bootable Linux TV OS base: Buildroot + a frozen "gateway" port layer
 (KMS/DRM display, evdev input, time, device-service mock) + our own UI runtime that
 ports the `prototype/index.html` behavior to real pixels. Milestone 1 runs under
-QEMU; real TV hardware is port #1+ later, implementing only the gateway interfaces.
+QEMU. **Bringing it up on real ARM hardware? Start at
+[../docs/PORTING_GUIDELINE.md](../docs/PORTING_GUIDELINE.md) — if the kernel
+has DRM/KMS + evdev, the port is mostly a defconfig and a device.conf.**
 
 **This is the behavior/look reference chain:** `prototype/index.html` (behavior) →
 AGENTS.md §5 design tokens → `renders/launcher/*.png` (look).

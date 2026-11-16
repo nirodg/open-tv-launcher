@@ -111,6 +111,12 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   writes the seed to usr/share/otv/samples (one copy). Verified on x86: drop → appears on app entry,
   app-delete → gone on the host, reboot → everything persists, volume mounts every boot.
 - Pending: audio backend (task 16 remainder), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
+- 2026-11-16 (porting guide): docs/PORTING_GUIDELINE.md — the ARM port doc (requirements table, defconfig/kernel/overlay
+  recipe, gateway expectations incl. every trap we hit: possible_crtts bitmask, page flips, evdev drain, inittab id,
+  S00mount/proc, process-relative clock; symptom→cause table; honest "not ported yet" list; printable checklist).
+  Companion fix: S30hostshare/S35media now exit instantly on real hardware ([ -d /sys/bus/virtio/devices ] || exit 0) —
+  previously they would have burned ~20 s of boot retrying 9p mounts on boards with no virtio bus; QEMU verified
+  unaffected. os/README.md links the guide.
 - 2026-11-14 (visible cursor): the UI now draws a software cursor — a classic white arrow (×1.5 for 1080p,
   ≈28 px) with a dark outline, scanline-polygon-rasterized in scene.c (poly_span), tracked in scene_pointer
   (dirty on move) and drawn LAST in scene_draw (over effects, toast, everything). With a virtio-tablet the

@@ -1,8 +1,9 @@
 #!/bin/sh
 # Mount the persistent media volume (9p from the host's /tmp/opentv — see
 # os/README.md). /media/internal is the TV's storage, /media/external the
-# "USB drive". Files dropped on the host appear here without a rebuild;
-# deletes from the Video app remove them on the host too.
+# "USB drive". Real hardware has no virtio bus — exit immediately there and
+# use the real mounts named by device.conf [storage] instead.
+[ -d /sys/bus/virtio/devices ] || exit 0
 mkdir -p /media/internal /media/external
 i=0
 while [ $i -lt 10 ]; do

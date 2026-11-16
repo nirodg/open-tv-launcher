@@ -1,9 +1,11 @@
 #!/bin/sh
-# Mount the QEMU 9p host share (used for screenshots and quick binary iteration).
+# Mount the QEMU 9p host share (used for screenshots and quick binary
+# iteration). Real hardware has no virtio bus — exit immediately there.
+[ -d /sys/bus/virtio/devices ] || exit 0
 mkdir -p /mnt/host
 i=0
 while [ $i -lt 10 ]; do
-	mount -t 9p -o trans=virtio,version=9p2000.L hostshare /mnt/host 2>/dev/null && break
+	mount -t 9p -o trans=virtio,version=9p2000.L hostshare /mnt/host && break
 	i=$((i+1))
 	sleep 1
 done
