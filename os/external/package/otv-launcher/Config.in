@@ -1,0 +1,6 @@
+config BR2_PACKAGE_OTV_LAUNCHER
+	bool "otv-launcher"
+	select BR2_PACKAGE_OTV_GATEWAY
+	help
+	  Open TV launcher: home, all apps, settings and overlays, rendered by
+	  the otv UI toolkit on top of the gateway port layer.

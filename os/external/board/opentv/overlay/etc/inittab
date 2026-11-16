@@ -1,0 +1,12 @@
+# /etc/inittab — Open TV OS (busybox init)
+::sysinit:/etc/init.d/rcS
+::shutdown:/etc/init.d/rcK
+::restart:/sbin/init
+
+# The launcher UI respawns forever; init restarts it if it exits.
+# (Empty id: the id field names a tty device — a name like "lch" makes
+# busybox init open /dev/lch and discard the process output.)
+::respawn:/usr/bin/otv-launcher
+
+# Debug console on the emulated serial line
+console::respawn:/sbin/getty -L console 0 vt100

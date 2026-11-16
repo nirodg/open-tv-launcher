@@ -1,0 +1,8 @@
+config BR2_PACKAGE_OTV_GATEWAY
+	bool "otv-gateway"
+	select BR2_PACKAGE_LIBDRM
+	help
+	  Open TV gateway port layer: the narrow device-specific interface
+	  (DRM/KMS display, evdev input, time, device-service mock). Everything
+	  above it is device-agnostic. Linux V4L2/ALSA/CEC interfaces are
+	  declared but not implemented in milestone 1.

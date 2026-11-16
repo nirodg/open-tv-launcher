@@ -1,0 +1,3 @@
+# Screenshots are verification artifacts (one batch per run, reviewed locally),
+# not repo content — see os/README.md § Verify.
+screenshots/
