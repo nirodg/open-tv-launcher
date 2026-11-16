@@ -111,6 +111,14 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   writes the seed to usr/share/otv/samples (one copy). Verified on x86: drop → appears on app entry,
   app-delete → gone on the host, reboot → everything persists, volume mounts every boot.
 - Pending: audio backend (task 16 remainder), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
+- 2026-11-16 (native-first corrected): the porting contract now states the TRUE intent (was over-rotated twice —
+  first "no blobs", then "open drivers only"). Final stance, mirrored in agent hard rules, skill hard rules,
+  guideline §0/§3/§6, device.conf comment, os/README: NATIVE FIRST — using the device's own low-level libraries
+  (proprietary GPU/decoder blobs) is the MAIN GOAL of a port (link the vendor EGL/GLES/V4L2/OMX when the developer
+  can); where the blob can't be used, the sanctioned alternative is to reverse-engineer and REWRITE a drop-in that
+  behaves 1:1 to the native lib. Both live behind the gateway backend surfaces (gw_display + media backend), never
+  a toolkit rewrite. Software (kms-dumb + ffmpeg) is the bring-up fallback, not the philosophy. Licensing/
+  redistribution of any blob-derived or RE'd library is the porter's responsibility, not the project's.
 - 2026-11-16 (GPU port contract fixed): the port contract had over-rotated to "no proprietary GPU blobs" — stricter
   than the actual design. Corrected to the intended stance everywhere (agent hard rules, skill hard rules, guideline
   §3/§6, device.conf comment, os/README): software (kms-dumb + CPU rasterizer) is the MANDATORY baseline every device

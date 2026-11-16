@@ -49,11 +49,11 @@ portdoctor's output.
 | ext4 root filesystem support | rootfs | — |
 | ~256 MB RAM, ~700 MHz CPU | 1080p software UI + H.264 480p decode | — |
 
-Notes on the display requirement: **no GPU is needed.** The UI is a CPU
-rasterizer writing into KMS dumb buffers — this works on Mali/Adreno/video-
-decoder SoCs without touching any vendor GL library, which is a design rule
-of the project. Almost every mainline DRM driver supports dumb buffers; if
-yours does not, that is the one place you may need a (small) kernel-side fix.
+Notes on the display requirement: the **software fallback** (KMS dumb
+buffers + CPU rasterizer) works on any mainline DRM driver — Mali, Adreno,
+video-decoder SoCs included — so a board boots without touching any vendor
+library. That fallback is the bring-up floor, *not* the goal: see §3 for how
+a port uses the device's native GPU libraries, which is the primary aim.
 
 The panel mode does not have to be 1080p — the UI is designed at 1920×1080
 and the gateway picks the connector's best mode; on other resolutions the
@@ -207,15 +207,26 @@ this section before assuming you need to change them.
   `drmModeDirtyFB`.
 - Pixel format is **XRGB8888** (word `0xFF000000 | r<<16 | g<<8 | b`).
 
-**Native GPU on a device that has one.** `gw_display` (in
-`os/src/gateway/include/gateway/gateway.h`) is the extension point: the
-toolkit only ever calls `gw_display_fb()` / `present()` / `damage()`, so a
-port can provide its own backend that renders those into the device's GL
-stack (GBM+EGL over an open driver, or the vendor's EGL) instead of a dumb
-buffer — selected by `display.backend = kms-gles2` in device.conf. That is a
-gateway backend swap, explicitly allowed and *not* a toolkit rewrite. The
-`kms-dumb` path must keep working as the fallback. The shared reference
-backend is task 15; a port may implement its own or contribute that one.
+**Native GPU / decode — the primary aim of a port.** The whole point of
+porting to a specific device is getting its own performance out of it. Using
+the device's native low-level libraries — the proprietary GPU and
+video-decoder blobs — is the *main goal*, not an exception:
+
+1. **Use the blob** when the developer can: link the vendor's EGL/GLES,
+   V4L2 (M2M), OMX, or whatever the SoC ships, behind the gateway's backend
+   surfaces (`gw_display` for rendering, the media backend for decode —
+   `ui/media.c` is the ffmpeg software fallback that a native decoder
+   replaces the same way).
+2. **Reverse-engineer / rewrite** where the blob can't be used directly:
+   document its behaviour and write a drop-in that behaves 1:1 to the native
+   library — the developer's own effort and responsibility.
+
+Both are gateway backend swaps, selected in device.conf — **never a toolkit
+rewrite**. The software path (`kms-dumb` + CPU, ffmpeg decode) must keep
+working as the fallback for bring-up, but it is the floor, not the
+philosophy. Licensing and redistribution of any reverse-engineered or
+blob-derived library is the porter's responsibility, not the project's (the
+project's own code stays licence-clean until a licence is chosen).
 
 ### Input (`input_evdev.c`)
 
@@ -313,11 +324,12 @@ the sections of this document.
 - **Audio**: `backend = null` — the player decodes video only. The ALSA
   backend lands behind the same `[audio]` key (task list: `tasks/todo.md`).
 - **Network**: `mock` shows a simulated state; no real Wi-Fi/netlink yet.
-- **GPU rendering**: the shared `kms-gles2` backend is declared but not yet
-  built (task 15). A device that ships native GL libraries is *allowed* to use
-  them — implement the backend behind `gw_display` (see §3) and select it with
-  `display.backend = kms-gles2`; the software path must remain working as the
-  fallback. This is a gateway backend, not a toolkit change.
+- **GPU rendering / video decode**: the shared `kms-gles2` backend and a
+  native decode backend are declared but not yet built (task 15/16). A port
+  is *encouraged* to use the device's native GPU/decoder libraries — or
+  reverse-engineer a 1:1 replacement — behind the gateway backends (see §3);
+  the software fallback stays available. Redistribution of any blob-derived
+  library is the porter's responsibility.
 - **CEC, IR raw protocols**: planned gateway interfaces; today remotes must
   arrive as standard evdev keys.
 

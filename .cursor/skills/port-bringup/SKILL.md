@@ -19,12 +19,13 @@ actually emerge.
 **Hard rules for a port:**
 - Never modify launcher or toolkit code to support a board — if a port seems
   to need it, the port is wrong; file an issue instead
-- **Software is the baseline, GPU is optional.** Every device must boot and
-  render with `kms-dumb` + the CPU rasterizer (the no-blob floor). A device
-  with native GL libraries MAY use them — but only through a `kms-gles2`
-  **display backend behind `gw_display`** (device.conf `[display] backend`),
-  never by rewriting the toolkit. Reject forking the UI; don't reject a
-  GPU-able device.
+- **Native first, software fallback.** Using the device's own low-level
+  libraries (the proprietary GPU/decoder blobs) is the *main goal*: link the
+  vendor EGL/GLES/V4L2/OMX when the developer can; otherwise reverse-engineer
+  and rewrite a drop-in that behaves 1:1 to the native lib. Both go behind the
+  gateway backend surfaces (`gw_display` / the media backend), never a toolkit
+  rewrite. The software path stays as the bring-up fallback. Licensing of any
+  blob-derived or RE'd library is the porter's responsibility.
 - FFmpeg stays LGPL (no GPL/nonfree options); `BR2_PACKAGE_FFMPEG_SWSCALE=y`
   is a SEPARATE buildroot option that defaults off — forgetting it is the #1
   build failure
