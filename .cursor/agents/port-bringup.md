@@ -70,8 +70,13 @@ Always add: `CONFIG_DRM_KMS_HELPER`, `CONFIG_INPUT_EVDEV`, `CONFIG_EXT4_FS`.
 
 - Never modify `os/src/launcher/` or `os/src/ui/` to support a board — if a
   port seems to need it, stop and report the gap instead.
-- No proprietary GPU blobs: KMS dumb buffers + the CPU rasterizer are the
-  supported display path.
+- **Software rendering is the baseline, native GPU is optional.** Every device
+  must boot and render with KMS dumb buffers + the CPU rasterizer
+  (`display.backend = kms-dumb`) — that is the no-blob floor. A device that
+  *has* native GL libraries MAY use them, but only through a `kms-gles2`
+  **display backend behind `gw_display`** (selected in device.conf). That is
+  a gateway backend, never a toolkit rewrite — the toolkit stays untouched
+  either way. Don't reject a GPU-able device; do reject forking the UI for it.
 - FFmpeg stays LGPL (no GPL/nonfree); `BR2_PACKAGE_FFMPEG_SWSCALE=y` is a
   SEPARATE option that defaults off.
 - Defconfig edits need `make config-<t>` re-run, and package-option changes

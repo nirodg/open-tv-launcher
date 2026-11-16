@@ -111,6 +111,13 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   writes the seed to usr/share/otv/samples (one copy). Verified on x86: drop → appears on app entry,
   app-delete → gone on the host, reboot → everything persists, volume mounts every boot.
 - Pending: audio backend (task 16 remainder), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
+- 2026-11-16 (GPU port contract fixed): the port contract had over-rotated to "no proprietary GPU blobs" — stricter
+  than the actual design. Corrected to the intended stance everywhere (agent hard rules, skill hard rules, guideline
+  §3/§6, device.conf comment, os/README): software (kms-dumb + CPU rasterizer) is the MANDATORY baseline every device
+  must boot with; native GPU is OPTIONAL and ALLOWED for any device that ships working GL libs (open OR vendor EGL) —
+  but only as a kms-gles2 display BACKEND behind gw_display, never a toolkit rewrite. Reject forking the UI; don't
+  reject a GPU-able device. Extension point documented: gw_display is the swap surface; shared backend is still
+  task 15, a port may implement its own.
 - 2026-11-16 (MERGED): PR #1 → main (merge commit 43a2704). The os-build branch's 19 commits are now on main:
   Buildroot base → gateway → UI toolkit → launcher → assets → external tree → host build → x86 KVM target →
   device description + backend switch → double-buffered flips → Video app (1:1 + real FFmpeg decode) → mouse input →

@@ -207,6 +207,16 @@ this section before assuming you need to change them.
   `drmModeDirtyFB`.
 - Pixel format is **XRGB8888** (word `0xFF000000 | r<<16 | g<<8 | b`).
 
+**Native GPU on a device that has one.** `gw_display` (in
+`os/src/gateway/include/gateway/gateway.h`) is the extension point: the
+toolkit only ever calls `gw_display_fb()` / `present()` / `damage()`, so a
+port can provide its own backend that renders those into the device's GL
+stack (GBM+EGL over an open driver, or the vendor's EGL) instead of a dumb
+buffer — selected by `display.backend = kms-gles2` in device.conf. That is a
+gateway backend swap, explicitly allowed and *not* a toolkit rewrite. The
+`kms-dumb` path must keep working as the fallback. The shared reference
+backend is task 15; a port may implement its own or contribute that one.
+
 ### Input (`input_evdev.c`)
 
 - Opens every `/dev/input/event*`; keeps devices that report arrow keys
@@ -303,8 +313,11 @@ the sections of this document.
 - **Audio**: `backend = null` — the player decodes video only. The ALSA
   backend lands behind the same `[audio]` key (task list: `tasks/todo.md`).
 - **Network**: `mock` shows a simulated state; no real Wi-Fi/netlink yet.
-- **GPU rendering**: `kms-gles2` is declared but not built; the CPU
-  rasterizer is the supported path (and the point — no vendor blobs).
+- **GPU rendering**: the shared `kms-gles2` backend is declared but not yet
+  built (task 15). A device that ships native GL libraries is *allowed* to use
+  them — implement the backend behind `gw_display` (see §3) and select it with
+  `display.backend = kms-gles2`; the software path must remain working as the
+  fallback. This is a gateway backend, not a toolkit change.
 - **CEC, IR raw protocols**: planned gateway interfaces; today remotes must
   arrive as standard evdev keys.
 
