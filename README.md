@@ -4,6 +4,8 @@ Design mockups for an open-source Android TV interface. All screens are 1920×10
 
 Figma file (launcher screens and components): https://www.figma.com/design/oPwtpOOq34ivqL0KS6Y2qQ
 
+[Test Mokcups Live](https://html-preview.github.io/?url=https://raw.githubusercontent.com/nirodg/open-tv-launcher/refs/heads/main/prototype/index.html?token=GHSAT0AAAAAAEQSUZ24R7UI3I2LDC76U5RA2X4FPIQ)
+
 ## Files
 
 | File | Screens |
