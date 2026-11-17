@@ -1,3 +1,12 @@
 # Screenshots are verification artifacts (one batch per run, reviewed locally),
 # not repo content — see os/README.md § Verify.
 screenshots/
+
+# Node deps for scripts/render.cjs and os/tools/render-icons.cjs (run `npm install`)
+node_modules/
+
+# Raw serial / boot log captures — debug artifacts, not repo content
+logs-tx.txt
+
+# Stale pre-refactor prototype copy; the canonical mock is prototype/index.html
+open-tv-prototype.html

@@ -8,12 +8,23 @@ Figma file (launcher screens and components): https://www.figma.com/design/oPwtp
 
 | File | Screens |
 |---|---|
+| `prototype/index.html` | **Clickable prototype**: all screens connected, one at a time, working controls |
 | `tv-launcher.html` | Home, App Library, Settings / Picture, Quick Panel, Foundations |
 | `store-tv.html` | On-screen keyboard, Store (Discover, Categories, App details, Library, Settings), TV Guide, Now Playing |
 | `renders/launcher/`, `renders/store-tv/` | PNG of every screen |
 | `scripts/render.cjs` | Re-renders all PNGs from the HTML |
 
 Each HTML file is self-contained. Open it in a browser to view the screens.
+
+## Clickable prototype
+
+Open `prototype/index.html` in a browser. It is one self-contained file with no dependencies.
+
+- **Remote:** arrow keys move, Enter selects, Esc goes back. H goes Home, M opens the quick panel, + and − change the volume, 0 mutes, PgUp and PgDn change channel. Hold Enter or right-click an app for its options. The on-screen remote on the right does the same.
+- **Mouse:** hover to focus, click to select, click a slider to set it.
+- **What works:** Home and pinned apps (add, move, remove); All apps with filters; Settings with 9 sections where every option works: Wi-Fi scanning and connecting with a password, Bluetooth pairing, a network speed test, resolution changes that ask before they stick, picture controls that change the screen, a screen saver, a sleep timer and turning off when idle, time zone and clock format, per-app storage and permissions, input names, HDMI-CEC, and factory reset; the quick panel; the power menu (standby and restart); the profile picker; and HDMI inputs. In the Store: Discover with a rotating banner, Categories, app details with install, update and uninstall, the Library (updates, Update all, delete), Store settings, and Search with the on-screen keyboard, your own keyboard or simulated voice. In the TV app: a guide that follows the real time, a live preview, Record and Remind, Channels with favourites, Recordings, Sources, and a player with pause, channel change, subtitles, audio tracks, a channel list and controls that hide on their own.
+
+The app names and TV programmes are made up. Nothing is stored between visits.
 
 ## Re-render
 
