@@ -111,6 +111,14 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   writes the seed to usr/share/otv/samples (one copy). Verified on x86: drop → appears on app entry,
   app-delete → gone on the host, reboot → everything persists, volume mounts every boot.
 - Pending: audio backend (task 16 remainder), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
+- 2026-11-17 (OpenCode install): the two agents + two skills are now installed OpenCode-native, not just Codex.
+  `.opencode/agents/{port-bringup,app-developer}.md` — frontmatter converted from Codex (`name`/`tools`/`model: inherit`)
+  to OpenCode V2 (`description` + `mode: subagent` + `permissions` deny-subagent; body unchanged = system prompt).
+  `.opencode/skills/{port-bringup,app-developer}/SKILL.md` — `name` is a display label now ("Port bring-up",
+  "App developer"); ID = directory name; description unchanged. OpenCode auto-discovers both dirs (confirmed:
+  skills reloaded live after edit). The `.cursor/` copies are kept as the Codex-convention equivalents; AGENTS.md
+  §11/§12 now point at `.opencode/` and note the two-home keep-in-sync rule. deny-subagent enforces the
+  single-agent doctrine; REA/Ghidra access is unaffected (REA = MCP via execute, Ghidra = shell).
 - 2026-11-17 (RE tooling for the agents): both defined agents (port-bringup, app-developer, in .cursor/agents/*.md
   and .cursor/skills/*/SKILL.md) now carry the rule: when stuck on a vendor blob (interface/behaviour, to link it or
   write a 1:1 replacement), use Ghidra (headless analyzeHeadless) and/or the REA MCP server instead of guessing, and
