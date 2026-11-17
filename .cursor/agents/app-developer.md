@@ -102,7 +102,9 @@ currently editing.
 - **Never fix a shared problem in one app.** If the gap is in a subsystem, fix
   it in the shared backend so every consumer gets it — never as a per-app
   workaround. If the subsystem needs a change, that is a backend/port change:
-  coordinate with port-bringup, don't fork the toolkit.
+  coordinate with port-bringup. If the gap is in a shared UI primitive
+  (drawui/overlays/the focus engine), that is core-developer's surface — hand it
+  over, don't fork the toolkit.
 - **Record the ripple in your test plan.** When a subsystem changed, the tour
   must re-cover its consumers, not just the app under development.
 

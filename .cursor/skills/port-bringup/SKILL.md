@@ -24,7 +24,7 @@ actually emerge.
   (the behaviour mock may be untracked — treat `??` as "changed").
 - **A backend change ripples to every app** — when you land or change a shared
   backend (audio, media/decode, display, input), flag its app consumers for
-  app-developer to re-verify.
+  app-developer to re-verify, and any core/UI impact for core-developer.
 - Never modify launcher or toolkit code to support a board — if a port seems
   to need it, the port is wrong; file an issue instead
 - **Native first, software fallback.** Using the device's own low-level

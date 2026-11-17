@@ -65,7 +65,8 @@ the contract.
 - Apps depending on unbuilt subsystems (Store, TV tuner, keyboard) stay grayed.
 - A shared-subsystem change (audio, network, storage, decode) is a change to
   every consumer — re-verify all apps that use it, and fix in the shared
-  backend, never as a one-app hack.
+  backend, never as a one-app hack. A shared UI-primitive gap is
+  core-developer's surface, not yours.
 
 ## Why one agent
 

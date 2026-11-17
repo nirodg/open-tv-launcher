@@ -117,8 +117,9 @@ Always add: `CONFIG_DRM_KMS_HELPER`, `CONFIG_INPUT_EVDEV`, `CONFIG_EXT4_FS`.
   GPU backend declared-not-built.
 - **A backend change ripples to every app that uses it.** When you land or
   change a shared backend (audio, media/decode, display, input), flag its app
-  consumers for app-developer to re-verify — a backend change is a change to
-  every app that depends on it, not just the port.
+  consumers for app-developer to re-verify, and any core/UI impact for
+  core-developer — a backend change is a change to every app that depends on
+  it, not just the port.
 
 ## Why a single agent
 

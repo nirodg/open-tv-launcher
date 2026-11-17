@@ -111,6 +111,17 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   writes the seed to usr/share/otv/samples (one copy). Verified on x86: drop → appears on app entry,
   app-delete → gone on the host, reboot → everything persists, volume mounts every boot.
 - Pending: audio backend (task 16 remainder), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
+- 2026-11-17 (core-developer agent, 3rd): the third agent, for /os core/UI work. .opencode/ + .cursor/
+  agents/core-developer.md + skills/core-developer/SKILL.md — owns the device-agnostic core (os/src/ui toolkit + design
+  tokens, launcher shared core main.c/act.c/sys.c/overlays.c/drawui.c + screen_home/apps/settings, gateway.h API
+  surface). KEY responsibility (the user's ask): a core/UI fix is NOT done until it runs on the device being ported —
+  fix in the shared core (never per-screen), rebuild, re-verify on device, re-render renders/ if the look moved, and
+  announce downstream (app-developer + port-bringup). Oracle = os/tools/coredoctor (new): design tokens ui.h vs
+  AGENTS §5 (C_* colours + G_* gradients), screen registry (SCREENS[] has a definition), gateway API surface
+  (declared → implemented in a .c), device target (device.conf name/backends), + a marked known-glitch section.
+  VERIFIED: 16 token PASS + 6 screen PASS + 15 gateway PASS, exit 0. Cross-refs: app-developer hands shared
+  UI-primitive gaps to core-developer; port-bringup flags core/UI impact to core-developer. AGENTS.md §14
+  (uncommitted) names the third agent; §13 retitled "all agents".
 - 2026-11-17 (mock-drift + blast-radius for the agents): both agents now (a) check git for mock drift before every
   task — `git log -1 --oneline` + `git status --short` on the mockups (prototype/index.html, tv-launcher.html,
   store-tv.html) vs their own code's last commit, and re-diff/re-sync if the mock moved. Caveat baked in:
