@@ -111,6 +111,13 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   writes the seed to usr/share/otv/samples (one copy). Verified on x86: drop → appears on app entry,
   app-delete → gone on the host, reboot → everything persists, volume mounts every boot.
 - Pending: audio backend (task 16 remainder), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
+- 2026-11-17 (app-developer agent): the app companion to port-bringup. .cursor/agents/app-developer.md — role + contract
+  (mock app → 1:1 working screen + launcher enablement + hardware wiring + test plan), gap-first method (appdoctor →
+  diff APPT.<id> vs the port → fix), hard rules (1:1 with the changing mock, never rewrite the toolkit/overlays, native-first
+  hardware, enabled=coloured / grayed=not-implemented, D-pad+mouse, unbuilt-subsystem apps stay grayed). .cursor/skills/
+  app-developer/SKILL.md — same knowledge as a skill. os/tools/appdoctor — the deterministic launcher-sync oracle
+  (grep-based host tool: mock APPT templates, APP_TPL map, launch[] live/grayed, registered screens; exits 1 on
+  live-without-screen). AGENTS.md §12 notes the flow (uncommitted).
 - 2026-11-16 (native-first corrected): the porting contract now states the TRUE intent (was over-rotated twice —
   first "no blobs", then "open drivers only"). Final stance, mirrored in agent hard rules, skill hard rules,
   guideline §0/§3/§6, device.conf comment, os/README: NATIVE FIRST — using the device's own low-level libraries
