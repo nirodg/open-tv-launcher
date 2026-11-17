@@ -77,13 +77,16 @@ internal = /media/internal
 external = /media/external
 ```
 
-**Rendering: software first, GPU optional.** The default is `kms-dumb` —
-KMS/DRM dumb buffers + our CPU rasterizer — so nobody porting this to a TV
-needs to reverse-engineer vendor GL libraries. The GPU path (`kms-gles2`,
-GBM/EGL behind the same `gw_display` API) is the optional upgrade for devices
-with open drivers (x86 testing boxes, panfrost/lima-class SoCs); until it
-lands, any other backend value falls back to `kms-dumb` with a clear log
-line. QEMU GPU passthrough (virtio-gpu `venus`/virgl + guest Mesa) will be
+**Rendering & decode: native first, software fallback.** The point of porting
+to a specific device is getting its own performance out of it, so using the
+device's native low-level libraries — the proprietary GPU and video-decoder
+blobs — is the *main goal*: link the vendor EGL/GLES/V4L2/OMX when the
+developer can; otherwise reverse-engineer and rewrite a drop-in that behaves
+1:1 with the native lib. Both happen behind the gateway backend surfaces
+(`gw_display` and the media backend), selected in device.conf — never a
+toolkit change. Software rendering (`kms-dumb` + CPU rasterizer) and ffmpeg
+decode stay as the bring-up fallback. Licensing/redistribution of any
+blob-derived or reverse-engineered library is the porter's responsibility. QEMU GPU passthrough (virtio-gpu `venus`/virgl + guest Mesa) will be
 attached when that backend exists — the KVM x86 target is already seamless
 with software rendering and page-flips.
 

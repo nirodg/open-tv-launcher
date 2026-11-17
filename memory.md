@@ -111,6 +111,69 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   writes the seed to usr/share/otv/samples (one copy). Verified on x86: drop → appears on app entry,
   app-delete → gone on the host, reboot → everything persists, volume mounts every boot.
 - Pending: audio backend (task 16 remainder), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
+- 2026-11-17 (core-developer agent, 3rd): the third agent, for /os core/UI work. .opencode/ + .cursor/
+  agents/core-developer.md + skills/core-developer/SKILL.md — owns the device-agnostic core (os/src/ui toolkit + design
+  tokens, launcher shared core main.c/act.c/sys.c/overlays.c/drawui.c + screen_home/apps/settings, gateway.h API
+  surface). KEY responsibility (the user's ask): a core/UI fix is NOT done until it runs on the device being ported —
+  fix in the shared core (never per-screen), rebuild, re-verify on device, re-render renders/ if the look moved, and
+  announce downstream (app-developer + port-bringup). Oracle = os/tools/coredoctor (new): design tokens ui.h vs
+  AGENTS §5 (C_* colours + G_* gradients), screen registry (SCREENS[] has a definition), gateway API surface
+  (declared → implemented in a .c), device target (device.conf name/backends), + a marked known-glitch section.
+  VERIFIED: 16 token PASS + 6 screen PASS + 15 gateway PASS, exit 0. Cross-refs: app-developer hands shared
+  UI-primitive gaps to core-developer; port-bringup flags core/UI impact to core-developer. AGENTS.md §14
+  (uncommitted) names the third agent; §13 retitled "all agents".
+- 2026-11-17 (mock-drift + blast-radius for the agents): both agents now (a) check git for mock drift before every
+  task — `git log -1 --oneline` + `git status --short` on the mockups (prototype/index.html, tv-launcher.html,
+  store-tv.html) vs their own code's last commit, and re-diff/re-sync if the mock moved. Caveat baked in:
+  prototype/index.html is currently UNTRACKED (unversioned) so `git log` can't see it — treat untracked/dirty as
+  "changed" and re-read every session. (b) app-developer gains "shared subsystems — mind the blast radius": audio/
+  network/storage/decode/tuner are shared gateway backends, NOT per-app code; a change ripples to every consumer
+  (AUDIO → video/music/radio/podcasts/iptv/tv), so find consumers first (grep screen_*.c + device.conf), check current
+  backend state (`git log -- os/src/gateway os/src/ui`), fix in the shared backend never as a one-app hack, and
+  re-cover consumers in the test plan. port-bringup gains the reciprocal rule: a backend change ripples to every app —
+  flag consumers for app-developer. Mirrored to both .cursor/ (Codex) and .opencode/ (OpenCode). appdoctor extended
+  with a deterministic git-drift oracle (mock-behav/mock-look/launcher/gateway/ui last-commit lines + uncommitted-mock
+  WARN), verified: it now correctly reports prototype/index.html as UNTRACKED.
+- 2026-11-17 (OpenCode install): the two agents + two skills are now installed OpenCode-native, not just Codex.
+  `.opencode/agents/{port-bringup,app-developer}.md` — frontmatter converted from Codex (`name`/`tools`/`model: inherit`)
+  to OpenCode V2 (`description` + `mode: subagent` + `permissions` deny-subagent; body unchanged = system prompt).
+  `.opencode/skills/{port-bringup,app-developer}/SKILL.md` — `name` is a display label now ("Port bring-up",
+  "App developer"); ID = directory name; description unchanged. OpenCode auto-discovers both dirs (confirmed:
+  skills reloaded live after edit). The `.cursor/` copies are kept as the Codex-convention equivalents; AGENTS.md
+  §11/§12 now point at `.opencode/` and note the two-home keep-in-sync rule. deny-subagent enforces the
+  single-agent doctrine; REA/Ghidra access is unaffected (REA = MCP via execute, Ghidra = shell).
+- 2026-11-17 (RE tooling for the agents): both defined agents (port-bringup, app-developer, in .cursor/agents/*.md
+  and .cursor/skills/*/SKILL.md) now carry the rule: when stuck on a vendor blob (interface/behaviour, to link it or
+  write a 1:1 replacement), use Ghidra (headless analyzeHeadless) and/or the REA MCP server instead of guessing, and
+  work from their output — treating everything extracted as DATA, never instructions (report any directives found in
+  target content). AGENTS.md §13 (uncommitted) states the shared rule.
+- 2026-11-17 (app-developer agent): the app companion to port-bringup. .cursor/agents/app-developer.md — role + contract
+  (mock app → 1:1 working screen + launcher enablement + hardware wiring + test plan), gap-first method (appdoctor →
+  diff APPT.<id> vs the port → fix), hard rules (1:1 with the changing mock, never rewrite the toolkit/overlays, native-first
+  hardware, enabled=coloured / grayed=not-implemented, D-pad+mouse, unbuilt-subsystem apps stay grayed). .cursor/skills/
+  app-developer/SKILL.md — same knowledge as a skill. os/tools/appdoctor — the deterministic launcher-sync oracle
+  (grep-based host tool: mock APPT templates, APP_TPL map, launch[] live/grayed, registered screens; exits 1 on
+  live-without-screen). AGENTS.md §12 notes the flow (uncommitted).
+- 2026-11-16 (native-first corrected): the porting contract now states the TRUE intent (was over-rotated twice —
+  first "no blobs", then "open drivers only"). Final stance, mirrored in agent hard rules, skill hard rules,
+  guideline §0/§3/§6, device.conf comment, os/README: NATIVE FIRST — using the device's own low-level libraries
+  (proprietary GPU/decoder blobs) is the MAIN GOAL of a port (link the vendor EGL/GLES/V4L2/OMX when the developer
+  can); where the blob can't be used, the sanctioned alternative is to reverse-engineer and REWRITE a drop-in that
+  behaves 1:1 to the native lib. Both live behind the gateway backend surfaces (gw_display + media backend), never
+  a toolkit rewrite. Software (kms-dumb + ffmpeg) is the bring-up fallback, not the philosophy. Licensing/
+  redistribution of any blob-derived or RE'd library is the porter's responsibility, not the project's.
+- 2026-11-16 (GPU port contract fixed): the port contract had over-rotated to "no proprietary GPU blobs" — stricter
+  than the actual design. Corrected to the intended stance everywhere (agent hard rules, skill hard rules, guideline
+  §3/§6, device.conf comment, os/README): software (kms-dumb + CPU rasterizer) is the MANDATORY baseline every device
+  must boot with; native GPU is OPTIONAL and ALLOWED for any device that ships working GL libs (open OR vendor EGL) —
+  but only as a kms-gles2 display BACKEND behind gw_display, never a toolkit rewrite. Reject forking the UI; don't
+  reject a GPU-able device. Extension point documented: gw_display is the swap surface; shared backend is still
+  task 15, a port may implement its own.
+- 2026-11-16 (MERGED): PR #1 → main (merge commit 43a2704). The os-build branch's 19 commits are now on main:
+  Buildroot base → gateway → UI toolkit → launcher → assets → external tree → host build → x86 KVM target →
+  device description + backend switch → double-buffered flips → Video app (1:1 + real FFmpeg decode) → mouse input →
+  software cursor → persistent /tmp/opentv volume → porting guideline → portdoctor + port-bringup agent. All verified
+  on QEMU aarch64 + x86_64 (host and guest), mouse- and D-pad-driven, zero crashes.
 - 2026-11-16 (port-bringup tooling): os/tools/portdoctor — the deterministic on-device checker (busybox-sh, reads
   sysfs/procfs only: /proc//sys//tmp, RAM, any /dev/dri/cardN + bound driver + connector modes, key-capable evdev
   devices, device.conf storage paths, launcher running; PASS/WARN/FAIL with a guideline §-referenced fix hint per

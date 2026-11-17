@@ -1,0 +1,90 @@
+#!/bin/sh
+# appdoctor — launcher/app sync checker (host tool; run from the repo root).
+#
+# Reports what the app-developer agent reconciles:
+#   • the mock's app templates (prototype APPT.<id>)
+#   • the launcher's live (coloured) vs grayed (deferred) apps (sys.c launch[])
+#   • the screens registered in the port (main.c SCREENS[])
+#   • the git drift between the mockups and the code (mock vs launcher vs
+#     gateway vs ui — tells you whether the mock moved on since you last synced)
+# plus the APP_TPL map that ties a launcher id to a template.
+#
+# Exits 1 when an app is live (coloured) but has no registered screen — that
+# is broken. Grayed apps are informational (not implemented yet; that is a
+# valid state, and turning one on is what "sync with the launcher" means).
+
+set -u
+ROOT=${1:-.}
+P=$ROOT/prototype/index.html
+S=$ROOT/os/src/launcher/sys.c
+M=$ROOT/os/src/launcher/main.c
+if [ ! -f "$P" ] || [ ! -f "$S" ] || [ ! -f "$M" ]; then
+	echo "appdoctor: run from the repo root (sh os/tools/appdoctor)" >&2
+	exit 2
+fi
+
+echo "== mock app templates (prototype APPT) =="
+grep -oE 'APPT\.[a-z0-9]+=' "$P" | sed 's/APPT\.//; s/=$//' | sort -u | tr '\n' ' '
+echo; echo
+
+echo "== APP_TPL (launcher id -> template) =="
+awk 'match($0, /APP_TPL=\{/){ s=substr($0, RSTART+9);
+	while (s !~ /\};/ && (getline line > 0)) s=s line;
+	s=substr(s, 1, index(s, "};")-1);
+	n=split(s, a, ","); for(i=1;i<=n;i++){ gsub(/^ +/,"",a[i]); print a[i] }
+}' "$P"
+echo
+
+echo "== launcher apps (id  status) =="
+TMP=$(mktemp)
+awk '/static const App launch\[\]/{inl=1; next} inl && /^\};/{exit} inl{
+	id=$2; gsub(/[",]/,"",id);
+	live=$12; gsub(/[^01]/,"",live);
+	printf "%s %s\n", id, (live=="1"?"live":"grayed");
+}' "$S" > "$TMP"
+cat "$TMP"
+echo
+
+echo "== registered screens (port) =="
+grep -oE '&[a-z0-9]+_screen' "$M" | sed 's/&//; s/_screen//' | sort -u | tr '\n' ' '
+echo; echo
+
+echo "== drift (git) — mock vs code =="
+if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+	# behaviour mock (prototype/index.html) — may be untracked in this repo
+	if git -C "$ROOT" ls-files --error-unmatch prototype/index.html >/dev/null 2>&1; then
+		git -C "$ROOT" log -1 --format='  mock-behav %h  %cs  %s' -- prototype/index.html
+	else
+		echo "  mock-behav prototype/index.html is UNTRACKED (unversioned) — re-read every session"
+	fi
+	# look mocks — tracked in git
+	git -C "$ROOT" log -1 --format='  mock-look  %h  %cs  %s' -- tv-launcher.html store-tv.html
+	git -C "$ROOT" log -1 --format='  launcher   %h  %cs  %s' -- os/src/launcher/
+	git -C "$ROOT" log -1 --format='  gateway    %h  %cs  %s' -- os/src/gateway/
+	git -C "$ROOT" log -1 --format='  ui         %h  %cs  %s' -- os/src/ui/
+	DIRTY=$(git -C "$ROOT" status --short -- prototype/index.html tv-launcher.html store-tv.html)
+	if [ -n "$DIRTY" ]; then
+		echo "  WARN mock has uncommitted/untracked changes — re-read now:"
+		printf '%s\n' "$DIRTY" | sed 's/^/    /'
+	fi
+else
+	echo "  (not a git repo — cannot check drift)"
+fi
+echo
+
+echo "== reconciliation =="
+BROKEN=0
+while IFS=' ' read -r id live; do
+	[ -n "$id" ] || continue
+	if [ "$live" = "live" ] && ! grep -qE "&${id}_screen" "$M"; then
+		echo "  BROKEN  $id is live (coloured) but has no registered screen"
+		BROKEN=1
+	fi
+done < "$TMP"
+rm -f "$TMP"
+if [ "$BROKEN" -eq 0 ]; then
+	echo "  no live-without-screen breakage"
+	echo "  grayed apps are not implemented yet — that is a valid state"
+	echo "  (turning one on = implement its screen + set live=1 in sys.c launch[]) "
+fi
+exit "$BROKEN"

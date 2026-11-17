@@ -1,0 +1,124 @@
+#!/bin/sh
+# coredoctor — core/UI sync checker (host tool; run from the repo root).
+#
+# The core-developer agent's oracle. Checks the device-agnostic core — the
+# ui/ toolkit, the launcher's shared core, and the gateway API surface — for
+# the drift a "core/UI glitch" hides in:
+#
+#   • design tokens in os/src/ui/ui.h still match AGENTS.md §5
+#   • every screen registered in main.c SCREENS[] has a definition
+#   • every gateway symbol declared in gateway.h is implemented in a .c
+#   • the device target (device.conf) the core is being ported to
+#
+# Exits 1 on any breakage. Add new known-glitch checks to the GLITCH section
+# at the bottom as they are diagnosed (see comment there).
+
+set -u
+ROOT=${1:-.}
+UI=$ROOT/os/src/ui/ui.h
+MAIN=$ROOT/os/src/launcher/main.c
+GW=$ROOT/os/src/gateway/include/gateway/gateway.h
+DEV=$ROOT/os/src/gateway/include/gateway/device.h
+DC=$ROOT/os/external/board/opentv/overlay/etc/otv/device.conf
+if [ ! -f "$UI" ] || [ ! -f "$MAIN" ] || [ ! -f "$GW" ]; then
+	echo "coredoctor: run from the repo root (sh os/tools/coredoctor)" >&2
+	exit 2
+fi
+BAD=0
+
+echo "== design tokens (ui.h vs AGENTS.md §5) =="
+# check_col NAME "r g b a"   /   check_grad NAME "r1 g1 b1 r2 g2 b2"
+check_col() {
+	name=$1; exp=$2
+	got=$(grep -E "#define C_${name}[[:space:]]" "$UI" | head -1 | \
+		sed -E 's/.*\{ *([0-9]+), *([0-9]+), *([0-9]+), *([0-9]+) *\}.*/\1 \2 \3 \4/')
+	if [ "$got" = "$exp" ]; then
+		echo "  PASS  C_$name"
+	else
+		echo "  FAIL  C_$name  got [$got]  want [$exp]  (ui.h drifted from AGENTS §5)"
+		BAD=1
+	fi
+}
+check_grad() {
+	name=$1; exp=$2
+	got=$(grep -E "#define G_${name}[[:space:]]" "$UI" | head -1 | \
+		sed -E 's/.*\{ *([0-9]+), *([0-9]+), *([0-9]+), *([0-9]+), *([0-9]+), *([0-9]+) *\}.*/\1 \2 \3 \4 \5 \6/')
+	if [ "$got" = "$exp" ]; then
+		echo "  PASS  G_$name"
+	else
+		echo "  FAIL  G_$name  got [$got]  want [$exp]  (ui.h drifted from AGENTS §5)"
+		BAD=1
+	fi
+}
+check_col INK "11 15 26 255"
+check_col ACCENT "91 140 255 255"
+check_col VIOLET "124 92 255 255"
+check_col MINT "61 214 176 255"
+check_col WARM "255 138 91 255"
+check_col ROSE "255 92 138 255"
+check_col LIVE "255 77 94 255"
+check_col TEXT "245 247 251 255"
+check_grad RED "255 106 106 200 50 78"
+check_grad BLUE "79 123 255 42 63 217"
+check_grad VIOLET "155 123 255 90 59 224"
+check_grad MINT "61 214 176 20 144 122"
+check_grad SUN "255 194 75 240 122 43"
+check_grad SLATE "74 86 116 38 46 68"
+check_grad ROSE "255 125 168 194 58 120"
+check_grad SKY "94 208 255 35 133 214"
+echo
+
+echo "== screen registry (main.c SCREENS[]) =="
+for s in $(grep -oE '&[a-z0-9]+_screen' "$MAIN" | sed 's/&//; s/_screen//' | sort -u); do
+	if grep -rqE "${s}_screen *= *\{" "$ROOT/os/src/launcher/"; then
+		echo "  PASS  $s"
+	else
+		echo "  FAIL  $s is registered in SCREENS[] but has no definition"
+		BAD=1
+	fi
+done
+echo
+
+echo "== gateway API surface (gateway.h → implemented in a .c) =="
+for fn in $(cat "$GW" "$DEV" 2>/dev/null | grep -oE '(gw|host)_[a-z0-9_]+ *\(' | sed -E 's/ *\($//' | sort -u); do
+	if grep -rqE "${fn} *\(" "$ROOT/os/src" --include='*.c'; then
+		echo "  PASS  $fn"
+	else
+		echo "  FAIL  $fn declared in gateway.h but not implemented in any .c"
+		BAD=1
+	fi
+done
+echo
+
+echo "== device target (device.conf) =="
+if [ -f "$DC" ]; then
+	awk -F= '/^\[/{sec=$0; next}
+		/^(name|board|backend|output)/{
+			gsub(/^[ \t]+|[ \t]+$/,"",$1); gsub(/^[ \t]+|[ \t]+$/,"",$2);
+			printf "  %-24s %s\n", sec" " $1, $2
+		}' "$DC"
+	if grep -qE 'backend *= *kms-gles2' "$DC" && \
+	   [ ! -f "$ROOT/os/src/gateway/guest/display_gles2.c" ]; then
+		echo "  WARN display.backend=kms-gles2 but guest/display_gles2.c is missing"
+		echo "       — it falls back to kms-dumb (native GPU path not built yet)."
+	fi
+else
+	echo "  (no device.conf at $DC — a board port has its own)"
+fi
+echo
+
+echo "== known-glitch checks =="
+# Add concrete, deterministic regression checks here as glitches are
+# diagnosed. Each should be greppable from the source and print PASS/FAIL
+# with a fix hint, and set BAD=1 on failure. Keep them cheap and host-side
+# (no device required) — the runtime/device verification lives in the
+# build-and-run step of the agent, not here.
+echo "  (none yet — add checks as core/UI glitches are diagnosed)"
+echo
+
+if [ "$BAD" -ne 0 ]; then
+	echo "coredoctor: $BAD breakage(s) — fix before touching the device"
+	exit 1
+fi
+echo "coredoctor: core/UI clean"
+exit 0
