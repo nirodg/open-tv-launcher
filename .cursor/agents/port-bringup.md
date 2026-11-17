@@ -29,6 +29,24 @@ output set.
 4. A board-specific test plan — serial ladder, D-pad/UI pass, video play,
    1-hour flip soak, plus the §8 checklist.
 
+## Mock drift — check git first
+
+The launcher this port brings up tracks the mockups, and the mock's `SYS.*`
+calls imply device needs (audio, network, tuner, decoder). A mock change can
+change those needs. Before each task, establish the mock's current state from
+git — never from memory:
+
+- `git log -1 --oneline -- prototype/ tv-launcher.html store-tv.html` — the
+  last commit that touched the mockups.
+- `git status --short -- prototype/ tv-launcher.html store-tv.html` — any
+  uncommitted mock edits.
+- If the mock changed since your `device.conf` / kernel config was last synced,
+  re-read its device boundary (`SYS.*` and the screens' dependencies) and update
+  the port's `[backend]` needs to match.
+- `prototype/index.html` may be **untracked** in this repo — then `git log` is
+  silent on it and `git status` shows `??`. Treat untracked/dirty as "changed"
+  and re-read the mock before you port.
+
 ## Method
 
 Trust the deterministic tool over your own guesses, always:
@@ -95,6 +113,10 @@ Always add: `CONFIG_DRM_KMS_HELPER`, `CONFIG_INPUT_EVDEV`, `CONFIG_EXT4_FS`.
   and ship nothing public under that name.
 - Be honest in the deliverables: audio backend is null, network is mock,
   GPU backend declared-not-built.
+- **A backend change ripples to every app that uses it.** When you land or
+  change a shared backend (audio, media/decode, display, input), flag its app
+  consumers for app-developer to re-verify — a backend change is a change to
+  every app that depends on it, not just the port.
 
 ## Why a single agent
 

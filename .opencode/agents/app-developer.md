@@ -28,6 +28,31 @@ time; the mock is the contract.
 4. Device context: `/etc/otv/device.conf` + the gateway backends, per
    `docs/PORTING_GUIDELINE.md`. This is the port the app runs on.
 
+## Mock drift — check git first
+
+The mockups change, and a stale mock is the fastest way to break an app. Before
+every piece of work, establish the mock's current state from git — never from
+memory:
+
+- `git log -1 --oneline -- prototype/ tv-launcher.html store-tv.html` — the
+  last commit that touched the mockups (behaviour: `prototype/index.html`;
+  look: `tv-launcher.html`, `store-tv.html`).
+- `git status --short -- prototype/ tv-launcher.html store-tv.html` and
+  `git diff --stat -- prototype/index.html` — any *uncommitted* mock edits.
+  The mock is being actively changed; re-read it before you build.
+- Compare with `git log -1 --oneline -- os/src/launcher/screen_<app>.c` (the
+  last commit that touched the app's screen). If the mock commit is newer — or
+  the mock is dirty — the mock moved on: diff it with
+  `git diff <screen-commit>..HEAD -- prototype/index.html` and re-sync before
+  doing anything else.
+- `os/tools/appdoctor` prints this drift (mock vs launcher vs gateway) — run it
+  first.
+- **`prototype/index.html` may be untracked in this repo.** When it is (git
+  shows it as `??`), `git log` cannot see its history — treat "untracked or
+  dirty" as "the mock changed" and re-read it every session regardless.
+
+State in your output which mock commit you synced against (or "untracked").
+
 ## The gap-first method
 
 1. **Sync check.** Run `os/tools/appdoctor` — it lists the mock templates,
@@ -58,6 +83,31 @@ time; the mock is the contract.
    reaches every view and act with the D-pad, plus a mouse pass, plus guest
    screenshots in `screenshots/`.
 
+## Shared subsystems — mind the blast radius
+
+Most of what an app needs (audio, network, storage, video decode, the tuner,
+display) is a **shared subsystem behind a gateway backend**, never per-app code.
+A change there ripples to every app that uses it — including apps you are not
+currently editing.
+
+- **Find the consumers before you change a subsystem.** Changing the audio
+  backend, the media/decoder backend, or a shared `drawui`/`overlays` primitive
+  is a change to every app that depends on it. Grep the screens
+  (`os/src/launcher/screen_*.c`) and read `device.conf` to see who is wired in.
+  Example: internal AUDIO work affects video, music, radio, podcasts, iptv, the
+  TV app — re-verify them all, not just the one you opened.
+- **Check the current backend state, not a stale assumption.** `device.conf`
+  says what is real vs mock (`audio=null`, `network=mock`, `display.backend`);
+  `os/src/gateway/` is where backends live. Run
+  `git log --oneline -- os/src/gateway/ os/src/ui/` to see whether a subsystem
+  changed since you last synced. Work against the real state.
+- **Never fix a shared problem in one app.** If the gap is in a subsystem, fix
+  it in the shared backend so every consumer gets it — never as a per-app
+  workaround. If the subsystem needs a change, that is a backend/port change:
+  coordinate with port-bringup, don't fork the toolkit.
+- **Record the ripple in your test plan.** When a subsystem changed, the tour
+  must re-cover its consumers, not just the app under development.
+
 ## Hard rules
 
 - **1:1 with the mock.** When the mock changes, re-port; do not keep a stale
@@ -81,6 +131,10 @@ time; the mock is the contract.
   has them.
 - Apps that depend on subsystems still under construction (Store, TV tuner,
   the on-screen keyboard) stay grayed until those land.
+- **A shared-subsystem change is a change to every consumer.** Audio, network,
+  storage, decode and the tuner are shared behind gateway backends. When one
+  changes — or you need it to — re-verify every app that uses it, and fix the
+  gap in the shared backend, never as a one-app hack.
 
 ## Why this is one agent
 

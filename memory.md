@@ -111,6 +111,18 @@ Behavior reference = `prototype/index.html` (focus engine, screens). Look refere
   writes the seed to usr/share/otv/samples (one copy). Verified on x86: drop → appears on app entry,
   app-delete → gone on the host, reboot → everything persists, volume mounts every boot.
 - Pending: audio backend (task 16 remainder), kms-gles2 GPU backend (task 15), on-screen keyboard (task 17).
+- 2026-11-17 (mock-drift + blast-radius for the agents): both agents now (a) check git for mock drift before every
+  task — `git log -1 --oneline` + `git status --short` on the mockups (prototype/index.html, tv-launcher.html,
+  store-tv.html) vs their own code's last commit, and re-diff/re-sync if the mock moved. Caveat baked in:
+  prototype/index.html is currently UNTRACKED (unversioned) so `git log` can't see it — treat untracked/dirty as
+  "changed" and re-read every session. (b) app-developer gains "shared subsystems — mind the blast radius": audio/
+  network/storage/decode/tuner are shared gateway backends, NOT per-app code; a change ripples to every consumer
+  (AUDIO → video/music/radio/podcasts/iptv/tv), so find consumers first (grep screen_*.c + device.conf), check current
+  backend state (`git log -- os/src/gateway os/src/ui`), fix in the shared backend never as a one-app hack, and
+  re-cover consumers in the test plan. port-bringup gains the reciprocal rule: a backend change ripples to every app —
+  flag consumers for app-developer. Mirrored to both .cursor/ (Codex) and .opencode/ (OpenCode). appdoctor extended
+  with a deterministic git-drift oracle (mock-behav/mock-look/launcher/gateway/ui last-commit lines + uncommitted-mock
+  WARN), verified: it now correctly reports prototype/index.html as UNTRACKED.
 - 2026-11-17 (OpenCode install): the two agents + two skills are now installed OpenCode-native, not just Codex.
   `.opencode/agents/{port-bringup,app-developer}.md` — frontmatter converted from Codex (`name`/`tools`/`model: inherit`)
   to OpenCode V2 (`description` + `mode: subagent` + `permissions` deny-subagent; body unchanged = system prompt).

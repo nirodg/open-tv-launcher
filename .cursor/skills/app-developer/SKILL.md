@@ -22,9 +22,15 @@ the contract.
 
 ## Method (gap-first)
 
+0. **Mock drift (git)** — `git log -1 --oneline -- prototype/ tv-launcher.html
+   store-tv.html` + `git status --short -- prototype/ tv-launcher.html
+   store-tv.html`. If the mock moved since your screen's last commit, re-diff
+   and re-sync before anything else. Never build from a stale mock.
+   (`prototype/index.html` may be untracked — then `git log` is silent and
+   `git status` shows `??`; treat that as "changed".)
 1. `os/tools/appdoctor` — sync oracle: mock templates, `APP_TPL`, live/grayed,
-   registered screens. live-without-screen = BROKEN; grayed-with-mock =
-   candidate to build.
+   registered screens, and the mock-vs-code drift. live-without-screen = BROKEN;
+   grayed-with-mock = candidate to build.
 2. Diff `APPT.<id>` (views/acts/hooks) against the ported screen; list what's
    missing or drifted.
 3. Fix to the current mock — never keep a stale "working" screen.
@@ -57,6 +63,9 @@ the contract.
   grayed and defers. No colour without a screen; no built screen left grayed.
 - D-pad AND mouse; hold-OK / right-click options where the mock has them.
 - Apps depending on unbuilt subsystems (Store, TV tuner, keyboard) stay grayed.
+- A shared-subsystem change (audio, network, storage, decode) is a change to
+  every consumer — re-verify all apps that use it, and fix in the shared
+  backend, never as a one-app hack.
 
 ## Why one agent
 

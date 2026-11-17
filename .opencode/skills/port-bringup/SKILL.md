@@ -17,6 +17,14 @@ actually emerge.
 3. The guest source: `os/src/gateway/guest/` (display_drm.c, input_evdev.c)
 
 **Hard rules for a port:**
+- **Check mock drift (git) first** — `git log -1 --oneline -- prototype/
+  tv-launcher.html store-tv.html` + `git status --short -- prototype/
+  tv-launcher.html store-tv.html`. The launcher tracks the mock and its `SYS.*`
+  implies device needs; re-read before you port, never from a stale mock
+  (the behaviour mock may be untracked — treat `??` as "changed").
+- **A backend change ripples to every app** — when you land or change a shared
+  backend (audio, media/decode, display, input), flag its app consumers for
+  app-developer to re-verify.
 - Never modify launcher or toolkit code to support a board — if a port seems
   to need it, the port is wrong; file an issue instead
 - **Native first, software fallback.** Using the device's own low-level

@@ -1,10 +1,12 @@
 #!/bin/sh
 # appdoctor — launcher/app sync checker (host tool; run from the repo root).
 #
-# Reports the three facts the app-developer agent reconciles:
+# Reports what the app-developer agent reconciles:
 #   • the mock's app templates (prototype APPT.<id>)
 #   • the launcher's live (coloured) vs grayed (deferred) apps (sys.c launch[])
 #   • the screens registered in the port (main.c SCREENS[])
+#   • the git drift between the mockups and the code (mock vs launcher vs
+#     gateway vs ui — tells you whether the mock moved on since you last synced)
 # plus the APP_TPL map that ties a launcher id to a template.
 #
 # Exits 1 when an app is live (coloured) but has no registered screen — that
@@ -46,6 +48,29 @@ echo
 echo "== registered screens (port) =="
 grep -oE '&[a-z0-9]+_screen' "$M" | sed 's/&//; s/_screen//' | sort -u | tr '\n' ' '
 echo; echo
+
+echo "== drift (git) — mock vs code =="
+if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+	# behaviour mock (prototype/index.html) — may be untracked in this repo
+	if git -C "$ROOT" ls-files --error-unmatch prototype/index.html >/dev/null 2>&1; then
+		git -C "$ROOT" log -1 --format='  mock-behav %h  %cs  %s' -- prototype/index.html
+	else
+		echo "  mock-behav prototype/index.html is UNTRACKED (unversioned) — re-read every session"
+	fi
+	# look mocks — tracked in git
+	git -C "$ROOT" log -1 --format='  mock-look  %h  %cs  %s' -- tv-launcher.html store-tv.html
+	git -C "$ROOT" log -1 --format='  launcher   %h  %cs  %s' -- os/src/launcher/
+	git -C "$ROOT" log -1 --format='  gateway    %h  %cs  %s' -- os/src/gateway/
+	git -C "$ROOT" log -1 --format='  ui         %h  %cs  %s' -- os/src/ui/
+	DIRTY=$(git -C "$ROOT" status --short -- prototype/index.html tv-launcher.html store-tv.html)
+	if [ -n "$DIRTY" ]; then
+		echo "  WARN mock has uncommitted/untracked changes — re-read now:"
+		printf '%s\n' "$DIRTY" | sed 's/^/    /'
+	fi
+else
+	echo "  (not a git repo — cannot check drift)"
+fi
+echo
 
 echo "== reconciliation =="
 BROKEN=0
